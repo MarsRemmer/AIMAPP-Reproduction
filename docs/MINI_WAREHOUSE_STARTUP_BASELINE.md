@@ -40,3 +40,21 @@
 补齐 TurtleBot3 模型搜索路径后，标准 `turtlebot3_waffle_pi` 与原始 AIMAPP `waffle_pi_plus` 均可直接正常显示。
 
 因此此前约 3–4 min 的等待记录仅作为环境故障排查记录保留，不再作为 AIMAPP 正常启动性能基线。
+
+
+## AIMAPP Agent
+
+Mini Warehouse 环境与机器人正常启动后，第四个终端执行：
+
+`scripts/mini_warehouse/baseline_A_4_agent.sh`
+
+该脚本负责：
+
+- 加载 ROS2 Humble 与 `aimapp_reproduction_ws` overlay；
+- 确保原作者四个关键 Python 节点具有 executable 权限；
+- 从 `~/aimapp_reproduction_ws/src/aimapp` 启动原作者 `agent_launch.py`；
+- 使用初始认知位置 `x=0.0, y=0.0`。
+
+2026-09-10 已实测完成至少 20 个 AIMAPP high-level steps，完整自主闭环正常运行。
+
+详细结果见 `docs/PR01_MINI_WAREHOUSE_SMOKE.md`。

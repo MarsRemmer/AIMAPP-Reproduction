@@ -1,46 +1,79 @@
 # AIMAPP-Reproduction
 
-AIMAPP 论文结果复现与实验记录仓库。
+AIMAPP 论文代码复现、实验验证与问题审计记录仓库。
 
-本仓库用于固定 AIMAPP 论文复现过程中已经验证的环境、启动脚本和实验记录。
+本仓库用于保存 AIMAPP 复现过程中已经验证的环境配置、稳定启动脚本、每日工作记录以及代码与实验审计结果。
 
-## Mini Warehouse 启动基线
+## 当前代码基线
 
-### Baseline A
+AIMAPP 官方固定 commit：
 
-启动顺序：`gzserver -> gzclient -> spawn robot`
+`213a4dc856b06819964511bdcd94e57db62e0913`
 
-三个终端依次执行：
+实际运行工作区：
 
-```bash
-bash scripts/mini_warehouse/baseline_A_1_server.sh
-bash scripts/mini_warehouse/baseline_A_2_gui.sh
-bash scripts/mini_warehouse/baseline_A_3_spawn_robot.sh
-```
+`~/aimapp_ws`
 
-修正 Gazebo 模型搜索路径后，原始 AIMAPP waffle_pi_plus 可直接正常显示。
+原作者只读审计副本：
 
-### Baseline B
+`~/aimapp_reproduction_audit/aimapp_ref`
 
-启动顺序：`gzserver -> spawn robot -> gzclient`
+复现记录仓库：
 
-三个终端依次执行：
+`~/AIMAPP-Reproduction`
 
-```bash
-bash scripts/mini_warehouse/baseline_B_1_server.sh
-bash scripts/mini_warehouse/baseline_B_2_spawn_robot.sh
-bash scripts/mini_warehouse/baseline_B_3_gui.sh
-```
+## Mini Warehouse 当前启动基线
 
-Baseline B 使用与 Baseline A 相同的完整 Gazebo 模型搜索路径。
+当前统一采用：
 
-两种启动方式均已验证。
+**Baseline A v2（Nav2）**
 
-早期约 3–4 min 的异常等待已定位为 Gazebo 模型搜索路径不完整：
-启动脚本遗漏了 `turtlebot3_gazebo/models`，导致
-`model://turtlebot3_common/...` mesh 资源不能立即解析。
+启动顺序：
 
-补齐该路径后，标准 TurtleBot3 与原始 AIMAPP waffle_pi_plus 均可直接显示。
-此前的 3 min 20 s / 4 min 16 s 记录不再作为正常启动性能基线。
+`Gazebo Server`
 
-详细记录见 `docs/MINI_WAREHOUSE_STARTUP_BASELINE.md`。
+→ `Gazebo GUI`
+
+→ `Spawn Robot + robot_state_publisher`
+
+→ `Nav2`
+
+→ `AIMAPP Agent`
+
+对应脚本：
+
+`scripts/mini_warehouse/baseline_A_1_server.sh`
+
+`scripts/mini_warehouse/baseline_A_2_gui.sh`
+
+`scripts/mini_warehouse/baseline_A_3_spawn_robot.sh`
+
+`scripts/mini_warehouse/baseline_A_4_nav2.sh`
+
+`scripts/mini_warehouse/baseline_A_5_agent.sh`
+
+详细启动说明：
+
+`docs/MINI_WAREHOUSE_STARTUP_BASELINE.md`
+
+## 每日工作记录
+
+完整工作过程持续记录于：
+
+`docs/WORK_LOG.md`
+
+该文件按日期记录实际完成的工作、问题排查、代码与配置变化、验证结果以及已经形成的阶段性结论。
+
+## 当前系统架构
+
+后续 SCA-AIFNav 采用：
+
+**SCA-AIFNav + Nav2**
+
+分层架构。
+
+SCA-AIFNav 负责状态推断、认知地图、结构复杂度、Expected Free Energy、MCTS 与高层策略选择。
+
+Nav2 负责目标确定后的路径规划、局部避障、轨迹跟踪与运动控制。
+
+原作者 Potential Field 保留作为 AIMAPP 公开代码运动层复现基线。

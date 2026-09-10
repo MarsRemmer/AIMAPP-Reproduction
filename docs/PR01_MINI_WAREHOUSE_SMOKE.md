@@ -14,7 +14,7 @@ AIMAPP 原作者固定 commit：
 
 实验工作空间：
 
-`~/aimapp_reproduction_ws`
+`~/aimapp_ws`
 
 ## 环境兼容处理
 
@@ -73,3 +73,18 @@ Potential Field 后续仅保留为 AIMAPP 原始公开代码的复现基线，�
 2. 在固定环境下进行 AIMAPP 重复运行与定量复现；
 3. 继续审计论文实验协议及结果后处理代码，包括 CE、nAUC、coverage-distance 等指标实现；
 4. 在 AIMAPP 复现基线稳定后继续 SCA-AIFNav 的结构复杂度自适应改进。
+
+## Nav2 对照验证与后续决定
+
+在原始 Potential Field 闭环验证基础上，进一步仅将 AIMAPP 运动客户端由 `PFClient()` 切换为 `Nav2Client()`，状态推断、认知地图、EFE、MCTS 及高层目标选择逻辑均保持不变。
+
+运行过程中发现，独立 spawn 的 `waffle_pi_plus` 未自动提供完整机器人 TF。补充 `robot_state_publisher` 后建立 `odom -> base_footprint -> base_link` 链路，Nav2 核心节点正常进入 active 状态，AIMAPP 随后成功自主运行。
+
+单次定性观察表明，相比原始 Potential Field，Nav2 在 Mini Warehouse 墙边、转角及障碍附近的运动更加稳定。因此此前观察到的部分墙边磨蹭、旋转和运动受阻不能直接归因于 AIMAPP 高层主动推断策略，其中一部分来自底层运动执行。
+
+后续 SCA-AIFNav 正式采用分层架构：
+
+- SCA-AIFNav：状态推断、认知地图、结构复杂度、EFE、MCTS 与高层策略选择；
+- Nav2：路径规划、局部避障、轨迹跟踪与运动控制。
+
+Potential Field 仅保留为 AIMAPP 原始公开代码复现基线，后续 SCA-AIFNav 默认运动层统一采用 Nav2。

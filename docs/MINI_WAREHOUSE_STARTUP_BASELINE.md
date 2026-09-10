@@ -2,59 +2,48 @@
 
 记录日期：2026-09-10
 
-## Baseline A
+## 当前唯一正式基线
 
-启动顺序：`gzserver -> gzclient -> spawn robot`
+Mini Warehouse 后续统一采用 **Baseline A v2（Nav2）**。
+旧 Baseline B 已删除，不再使用。
 
-对应脚本：
-- `scripts/mini_warehouse/baseline_A_1_server.sh`
-- `scripts/mini_warehouse/baseline_A_2_gui.sh`
-- `scripts/mini_warehouse/baseline_A_3_spawn_robot.sh`
+运行工作区：`~/aimapp_ws`  
+原作者只读审计副本：`~/aimapp_reproduction_audit/aimapp_ref`
 
-实测结果：
-- Mini Warehouse 地图可正常加载。
-- 修正 Gazebo 模型搜索路径后，原始 AIMAPP `waffle_pi_plus` 可直接正常显示。
-- 早期约 3 min 的等待属于环境路径配置异常，不作为正常启动性能结果。
+## 固定启动顺序
 
-## Baseline B
+1. `baseline_A_1_server.sh`：启动 Gazebo Server
+2. `baseline_A_2_gui.sh`：启动 Gazebo GUI
+3. `baseline_A_3_spawn_robot.sh`：生成 waffle_pi_plus，并启动 robot_state_publisher
+4. `baseline_A_4_nav2.sh`：启动 Nav2
+5. `baseline_A_5_agent.sh`：启动 AIMAPP Agent
 
-启动顺序：`gzserver -> spawn robot -> gzclient`
+统一执行位置：
 
-对应脚本：
-- `scripts/mini_warehouse/baseline_B_1_server.sh`
-- `scripts/mini_warehouse/baseline_B_2_spawn_robot.sh`
-- `scripts/mini_warehouse/baseline_B_3_gui.sh`
+`~/AIMAPP-Reproduction/scripts/mini_warehouse/`
 
-实测结果：
-- Baseline B 与 Baseline A 使用相同的完整 Gazebo 模型搜索路径。
-- 早期记录的约 4 min 等待属于同一环境路径配置异常。
+## 关键环境修正
 
-## 当前结论
+A1/A2 已补齐 `turtlebot3_gazebo/models` 到 `GAZEBO_MODEL_PATH`，解决此前 Mini Warehouse 中 TurtleBot3 mesh 资源解析造成的数分钟启动等待。
 
-两种启动方式均已验证可以正常工作。
+A3 在 spawn 机器人后，通过 xacro 展开 TurtleBot3 Waffle Pi URDF 并启动 `robot_state_publisher`，补齐：
 
-最终确认问题不是 AIMAPP 算法、相机、LiDAR、Gazebo ROS plugin、GPU 或 Mini Warehouse 世界本身。
+`odom -> base_footprint -> base_link`
 
-根因是启动脚本覆盖 `GAZEBO_MODEL_PATH` 时遗漏了 `turtlebot3_gazebo/models`，导致 TurtleBot3 SDF 中的 `model://turtlebot3_common/...` mesh 资源不能立即解析。
+从而满足 Nav2 对 TF 的要求。
 
-补齐 TurtleBot3 模型搜索路径后，标准 `turtlebot3_waffle_pi` 与原始 AIMAPP `waffle_pi_plus` 均可直接正常显示。
+A5 自动检查 Python 节点 executable 权限，并要求当前 AIMAPP 使用：
 
-因此此前约 3–4 min 的等待记录仅作为环境故障排查记录保留，不再作为 AIMAPP 正常启动性能基线。
+`self.motion_client = Nav2Client()`
 
+## 当前架构决定
 
-## AIMAPP Agent
+AIMAPP / SCA-AIFNav 负责状态推断、认知地图、EFE、MCTS 和高层策略选择，即“为什么去、下一步去哪里”。
 
-Mini Warehouse 环境与机器人正常启动后，第四个终端执行：
+Nav2 负责路径规划、局部避障、轨迹跟踪和运动控制，即“目标确定后如何安全到达”。
 
-`scripts/mini_warehouse/baseline_A_4_agent.sh`
+Potential Field 仅保留为原作者公开代码的复现基线，不再作为后续 SCA-AIFNav 默认运动层。
 
-该脚本负责：
+详细闭环验证见：
 
-- 加载 ROS2 Humble 与 `aimapp_reproduction_ws` overlay；
-- 确保原作者四个关键 Python 节点具有 executable 权限；
-- 从 `~/aimapp_reproduction_ws/src/aimapp` 启动原作者 `agent_launch.py`；
-- 使用初始认知位置 `x=0.0, y=0.0`。
-
-2026-09-10 已实测完成至少 20 个 AIMAPP high-level steps，完整自主闭环正常运行。
-
-详细结果见 `docs/PR01_MINI_WAREHOUSE_SMOKE.md`。
+`docs/PR01_MINI_WAREHOUSE_SMOKE.md`

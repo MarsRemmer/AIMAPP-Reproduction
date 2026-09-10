@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
 # AIMAPP Mini Warehouse
-# Baseline A - Terminal 1
-# Startup order:
-# gzserver -> gzclient -> robot
+# Baseline A v2 - Terminal 1
+# Order:
+# server -> gui -> robot+TF -> Nav2 -> AIMAPP
 
 export PYTHONDONTWRITEBYTECODE=1
-set +e
+set -e
 
 source /opt/ros/humble/setup.bash
-source "$HOME/aimapp_reproduction_ws/install/setup.bash"
+source "$HOME/aimapp_ws/install/setup.bash"
 
 WAREHOUSE_SHARE=$(
     ros2 pkg prefix aws_robomaker_small_warehouse_world
@@ -19,11 +19,19 @@ TB3_SHARE=$(
     ros2 pkg prefix turtlebot3_gazebo
 )/share/turtlebot3_gazebo
 
-export GAZEBO_MODEL_PATH="$TB3_SHARE/models:$WAREHOUSE_SHARE/models:$WAREHOUSE_SHARE/worlds"
+# Important:
+# Keep TurtleBot3 models in GAZEBO_MODEL_PATH.
+# Missing this path previously caused several-minute mesh lookup delays.
+export GAZEBO_MODEL_PATH="$TB3_SHARE/models:$WAREHOUSE_SHARE/models:$WAREHOUSE_SHARE/worlds:${GAZEBO_MODEL_PATH:-}"
+
+echo "=========================================="
+echo "Baseline A v2 - Terminal 1"
+echo "Mini Warehouse Gazebo Server"
+echo "=========================================="
 
 cd "$WAREHOUSE_SHARE" || exit 1
 
-gzserver --verbose \
+exec gzserver --verbose \
     -s libgazebo_ros_init.so \
     -s libgazebo_ros_factory.so \
     "$WAREHOUSE_SHARE/worlds/warehouse_mini/warehouse_mini.world"

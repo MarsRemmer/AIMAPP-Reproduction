@@ -18,7 +18,7 @@ bash scripts/mini_warehouse/baseline_A_2_gui.sh
 bash scripts/mini_warehouse/baseline_A_3_spawn_robot.sh
 ```
 
-实测：spawn_entity 约 1.02 s 返回成功；Gazebo Real Time 约 3 min 20 s 时小车最终出现。
+修正 Gazebo 模型搜索路径后，原始 AIMAPP waffle_pi_plus 可直接正常显示。
 
 ### Baseline B
 
@@ -32,8 +32,15 @@ bash scripts/mini_warehouse/baseline_B_2_spawn_robot.sh
 bash scripts/mini_warehouse/baseline_B_3_gui.sh
 ```
 
-实测：无 GUI Spawn 约 0.77 s；Gazebo Real Time 约 4 min 16 s 时地图和小车最终一起出现。
+Baseline B 使用与 Baseline A 相同的完整 Gazebo 模型搜索路径。
 
-两种方法均已验证可以正常启动，但 AIMAPP 机器人加入后存在明显的 Gazebo 初始化/渲染卡顿。
+两种启动方式均已验证。
+
+早期约 3–4 min 的异常等待已定位为 Gazebo 模型搜索路径不完整：
+启动脚本遗漏了 `turtlebot3_gazebo/models`，导致
+`model://turtlebot3_common/...` mesh 资源不能立即解析。
+
+补齐该路径后，标准 TurtleBot3 与原始 AIMAPP waffle_pi_plus 均可直接显示。
+此前的 3 min 20 s / 4 min 16 s 记录不再作为正常启动性能基线。
 
 详细记录见 `docs/MINI_WAREHOUSE_STARTUP_BASELINE.md`。

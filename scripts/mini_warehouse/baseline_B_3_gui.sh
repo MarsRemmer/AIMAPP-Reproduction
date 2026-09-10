@@ -14,7 +14,11 @@ WAREHOUSE_SHARE=$(
     ros2 pkg prefix aws_robomaker_small_warehouse_world
 )/share/aws_robomaker_small_warehouse_world
 
-export GAZEBO_MODEL_PATH="$WAREHOUSE_SHARE/models:$WAREHOUSE_SHARE/worlds"
+TB3_SHARE=$(
+    ros2 pkg prefix turtlebot3_gazebo
+)/share/turtlebot3_gazebo
+
+export GAZEBO_MODEL_PATH="$TB3_SHARE/models:$WAREHOUSE_SHARE/models:$WAREHOUSE_SHARE/worlds"
 
 cd "$WAREHOUSE_SHARE" || exit 1
 

@@ -806,7 +806,7 @@ Baseline B
 
 详细启动说明单独保存在：
 
-`docs/MINI_WAREHOUSE_STARTUP_BASELINE.md`
+`docs/baselines/MINI_WAREHOUSE_STARTUP_BASELINE.md`
 
 ---
 

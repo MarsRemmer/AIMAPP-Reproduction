@@ -54,13 +54,13 @@ AIMAPP 官方固定 commit：
 
 详细启动说明：
 
-`docs/MINI_WAREHOUSE_STARTUP_BASELINE.md`
+`docs/baselines/MINI_WAREHOUSE_STARTUP_BASELINE.md`
 
 ## 每日工作记录
 
 完整工作过程持续记录于：
 
-`docs/WORK_LOG.md`
+`docs/logs/WORK_LOG.md`
 
 该文件按日期记录实际完成的工作、问题排查、代码与配置变化、验证结果以及已经形成的阶段性结论。
 

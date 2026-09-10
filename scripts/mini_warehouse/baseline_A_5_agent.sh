@@ -8,9 +8,9 @@ export PYTHONDONTWRITEBYTECODE=1
 set -e
 
 source /opt/ros/humble/setup.bash
-source "$HOME/aimapp_ws/install/setup.bash"
+source "$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/install/setup.bash"
 
-AIMAPP_SRC="$HOME/aimapp_ws/src/aimapp"
+AIMAPP_SRC="$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/src/aimapp"
 
 # agent_launch.py assumes that <cwd>/tests exists.
 mkdir -p "$AIMAPP_SRC/tests"

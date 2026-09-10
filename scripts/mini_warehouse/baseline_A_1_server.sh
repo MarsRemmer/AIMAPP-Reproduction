@@ -9,7 +9,7 @@ export PYTHONDONTWRITEBYTECODE=1
 set -e
 
 source /opt/ros/humble/setup.bash
-source "$HOME/aimapp_ws/install/setup.bash"
+source "$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/install/setup.bash"
 
 WAREHOUSE_SHARE=$(
     ros2 pkg prefix aws_robomaker_small_warehouse_world

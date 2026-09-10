@@ -7,8 +7,8 @@
 Mini Warehouse 后续统一采用 **Baseline A v2（Nav2）**。
 旧 Baseline B 已删除，不再使用。
 
-运行工作区：`~/aimapp_ws`  
-原作者只读审计副本：`~/aimapp_reproduction_audit/aimapp_ref`
+运行工作区：`~/SCA-AIFNav-Project/aimapp/runtime_ws`
+原作者只读审计副本：`~/SCA-AIFNav-Project/aimapp/audit/aimapp_ref`
 
 ## 固定启动顺序
 
@@ -20,7 +20,7 @@ Mini Warehouse 后续统一采用 **Baseline A v2（Nav2）**。
 
 统一执行位置：
 
-`~/AIMAPP-Reproduction/scripts/mini_warehouse/`
+`~/SCA-AIFNav-Project/aimapp/reproduction/scripts/mini_warehouse/`
 
 ## 关键环境修正
 

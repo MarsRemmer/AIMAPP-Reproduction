@@ -908,3 +908,152 @@ Baseline B
 - AIMAPP 结果后处理 notebook 初步审计继续推进。
 
 以上为截至 2026-09-10 的工作记录。
+
+---
+
+# 2026-09-11 工作记录
+
+## 21. AIMAPP 运行依赖补齐与 Baseline A v2 验证
+
+在整理 AIMAPP 正式运行环境时发现，新工作区仍隐式依赖旧 `~/aimapp_reproduction_ws`。进一步检查确认，Mini Warehouse 所需的 `aws_robomaker_small_warehouse_world` 仅存在于旧工作区，因此新工作区独立启动时会出现 package not found。随后将该 package 迁移至正式 AIMAPP 运行工作区并构建成功。
+
+继续对比旧工作区 package 组成后发现，`aws_robomaker_small_house_world` 同样属于旧工作区独有环境资源，因此一并迁移并完成构建。当前正式 AIMAPP 工作区包含 `aimapp`、`aimapp_actions`、`aws_robomaker_small_house_world` 和 `aws_robomaker_small_warehouse_world`。
+
+旧工作区额外存在的 TurtleBot3 simulation 相关 package 未继续复制。当前 Baseline A v2 已验证可直接使用系统 `/opt/ros/humble` 中安装的 `turtlebot3_gazebo`，因此不再依赖旧 workspace 中的重复副本。
+
+在目录重构前，重新从 A1 至 A5 完整启动 Mini Warehouse。Gazebo Server、Gazebo GUI、TurtleBot3 spawn 与 `robot_state_publisher`、Nav2、AIMAPP Agent 均正常工作。Nav2 lifecycle 节点最终进入 active，AIMAPP Agent 正常启动 `Nav2Client`、初始化位姿、获取全景观测并开始自主导航。因此 Mini Warehouse + Nav2 Baseline A v2 已完成完整运行验证。
+
+## 22. AIMAPP 原始运行结果归档
+
+检查正式 AIMAPP 源码树时发现，`tests/0/` 和 `tests/1/` 中已经产生运行结果文件，包括 `steps_data.csv` 和 `model.pkl`。
+
+为避免后续实验覆盖原始结果，将两组数据原样复制至：
+
+`results/raw/2026-09-10_aimapp_runtime_snapshot/`
+
+当前归档内容为：
+
+- `0/model.pkl`
+- `0/steps_data.csv`
+- `1/model.pkl`
+- `1/steps_data.csv`
+
+目前没有充分证据确认目录 `0` 和 `1` 分别对应 PF 或 Nav2，因此暂不对两组结果进行方法标签推断，仅作为原始运行快照保存。
+
+## 23. AIMAPP 与 SCA-AIFNav 项目目录统一重构
+
+此前 AIMAPP 与 SCA-AIFNav 相关工作区分散在 Home 目录下，不利于后续维护。今日建立统一总项目目录：
+
+`~/SCA-AIFNav-Project/`
+
+当前主要结构为：
+
+```text
+SCA-AIFNav-Project/
+├── aimapp/
+│   ├── runtime_ws/
+│   ├── reproduction/
+│   ├── audit/
+│   └── archive/
+│       └── aimapp_reproduction_ws_old/
+└── sca_aifnav/
+    ├── runtime_ws/
+    └── legacy_ws/
+```
+
+其中：
+
+- `aimapp/runtime_ws`：当前正式 AIMAPP 运行工作区；
+- `aimapp/reproduction`：AIMAPP 复现记录、脚本、文档与实验结果；
+- `aimapp/audit`：原作者代码只读审计副本及审计辅助文件；
+- `aimapp/archive/aimapp_reproduction_ws_old`：早期 AIMAPP 复现工作区，仅作为历史备份；
+- `sca_aifnav/runtime_ws`：当前正式 SCA-AIFNav 工作区；
+- `sca_aifnav/legacy_ws`：早期 SCA-AIFNav 工作区。
+
+原 Home 目录下的 `AIMAPP-Reproduction`、`aimapp_reproduction_audit`、`aimapp_reproduction_ws`、`aimapp_ws`、`sca_aifnav_ws`、`sca_aifnav_legacy_ws` 均已完成迁移，不再作为顶层工作目录存在。
+
+旧 `aimapp_reproduction_ws` 当前约占 3.8 GB，已归档至 `aimapp/archive/aimapp_reproduction_ws_old`，暂不删除。后续不再 source、不再编译，也不再作为正式运行依赖。
+
+## 24. 搬迁后的路径修正、环境清理与工作区重建
+
+目录迁移完成后，同步修改当前仍在使用的 README、Mini Warehouse 启动基线文档以及 A1～A5 启动脚本。
+
+正式路径统一调整为：
+
+- AIMAPP 运行工作区：`~/SCA-AIFNav-Project/aimapp/runtime_ws`
+- AIMAPP 复现仓库：`~/SCA-AIFNav-Project/aimapp/reproduction`
+- AIMAPP 官方审计副本：`~/SCA-AIFNav-Project/aimapp/audit/aimapp_ref`
+- SCA-AIFNav 正式工作区：`~/SCA-AIFNav-Project/sca_aifnav/runtime_ws`
+
+A1～A5 启动脚本中的旧 `$HOME/aimapp_ws` 路径已全部更新，并重新执行 Bash 语法检查，五个脚本均通过。
+
+由于 ROS2/colcon 的 `build`、`install`、`log` 及环境变量中可能保留 workspace 的绝对路径，因此目录不能仅移动后继续沿用原有构建产物。首先对 AIMAPP 正式运行工作区删除旧 `build/install/log`，随后在新路径重新执行 `colcon build --symlink-install`。
+
+正式 AIMAPP 工作区四个 package 均重新构建成功：
+
+- `aimapp`
+- `aimapp_actions`
+- `aws_robomaker_small_house_world`
+- `aws_robomaker_small_warehouse_world`
+
+首次重建时，colcon 提示环境变量中仍存在旧 `/home/mars/aimapp_ws` 路径。进一步排查发现，旧 ROS2 overlay 不仅残留在 `AMENT_PREFIX_PATH`、`COLCON_PREFIX_PATH` 和 `CMAKE_PREFIX_PATH`，还存在于 `PYTHONPATH`、`LD_LIBRARY_PATH` 和 `GAZEBO_MODEL_PATH`。
+
+检查 `.bashrc`、`.profile` 等 shell 启动文件后，没有发现写死的旧 AIMAPP workspace 路径。因此问题确定为当前终端会话继承的历史 overlay 环境，而不是永久 shell 配置错误。
+
+随后清理相关 ROS2/colcon/Python/Gazebo 环境变量，仅重新加载 `/opt/ros/humble/setup.bash`，删除 AIMAPP `build/install/log` 后再次干净构建。
+
+最终验证结果：
+
+- 四个 AIMAPP package 均构建成功；
+- `ros2 pkg prefix` 全部指向 `~/SCA-AIFNav-Project/aimapp/runtime_ws/install/`；
+- 当前环境变量中不存在 `/home/mars/aimapp_ws`；
+- 新 `build/install` 中不存在 `/home/mars/aimapp_ws` 或旧 `aimapp_reproduction_ws` 路径。
+
+随后对 SCA-AIFNav 正式工作区执行同样的搬迁后重建。当前工作区包含：
+
+- `sca_aifnav_core`
+- `sca_aifnav_ros`
+- `sca_aifnav_sim`
+
+三个 package 均在新路径下构建成功，SCA-AIFNav 源码 Git 状态保持干净。
+
+旧路径扫描过程中，`build/sca_aifnav_core/.../__pycache__/*.pyc` 等二进制缓存仍可匹配旧 `/home/mars/sca_aifnav_ws` 路径。进一步排查确认，真正的源码文本中不存在旧 `sca_aifnav_ws` 或 `aimapp_ws` 路径，因此该现象来自 Python 字节码缓存内部保存的历史源码路径，而不是源码配置错误。
+
+随后统一清理 SCA-AIFNav 源码树、build 和 install 中的 `__pycache__`、`*.pyc`、`*.pyo` 文件。再次检查后，缓存和旧路径匹配均为空，源码 Git 状态仍保持干净。
+
+当前 SCA-AIFNav `.gitignore` 已包含 `__pycache__/`、`*.py[cod]` 和 `.pytest_cache/`，因此无需新增规则。
+
+至此，AIMAPP 与 SCA-AIFNav 两个正式 runtime workspace 均已完成新路径下的干净重建和旧路径排查。
+
+需要特别说明：目录重构之后目前完成的是构建、package prefix、环境变量和路径级验证，尚未在新的统一目录结构下再次完整执行 A1～A5 自主导航闭环。此前完整的 Mini Warehouse + Nav2 Baseline A v2 运行验证是在本次目录重构之前完成的。
+
+## 25. 截至 2026-09-11 当前状态
+
+截至本次工作结束，已经实际完成：
+
+- Mini Warehouse Gazebo 启动延迟根因定位与 `GAZEBO_MODEL_PATH` 修复；
+- AIMAPP 原始 Potential Field 自主闭环验证；
+- AIMAPP 运动层切换至 Nav2；
+- Nav2 所需 `base_footprint -> base_link` TF 问题修复；
+- Mini Warehouse A1～A5 Baseline A v2 建立；
+- 目录重构前完成 A1～A5 + Nav2 完整运行验证；
+- AWS Small Warehouse world package 从旧工作区迁移至正式工作区；
+- AWS Small House world package 从旧工作区迁移至正式工作区；
+- 正式 AIMAPP workspace 已不再依赖旧 `aimapp_reproduction_ws`；
+- `tests/0` 与 `tests/1` 原始运行结果已归档至 `results/raw/2026-09-10_aimapp_runtime_snapshot/`；
+- AIMAPP、复现仓库、审计副本、SCA-AIFNav 与历史工作区已统一整理到 `~/SCA-AIFNav-Project/`；
+- README、启动基线文档和 A1～A5 脚本均更新至新路径；
+- AIMAPP runtime workspace 已在新路径完成干净重建；
+- SCA-AIFNav runtime workspace 已在新路径完成干净重建；
+- ROS2 历史 overlay 环境污染已定位并清除；
+- SCA-AIFNav 源码文本不存在旧 workspace 绝对路径；
+- SCA-AIFNav Python 字节码缓存已清理；
+- 旧 `aimapp_reproduction_ws` 已归档至 `aimapp/archive/aimapp_reproduction_ws_old`，暂不删除。
+
+当前统一项目根目录为：
+
+`~/SCA-AIFNav-Project/`
+
+下一次正式运行验证时，应从新目录重新执行 A1～A5，以完成目录迁移后的最终运行级确认。在该验证完成前，不删除 `aimapp/archive/aimapp_reproduction_ws_old`。
+
+后续 AIMAPP 复现工作继续以定量重复实验、结果后处理审计和正式 reproduction protocol 为主。

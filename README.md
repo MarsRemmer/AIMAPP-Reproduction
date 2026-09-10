@@ -12,15 +12,15 @@ AIMAPP 官方固定 commit：
 
 实际运行工作区：
 
-`~/aimapp_ws`
+`~/SCA-AIFNav-Project/aimapp/runtime_ws`
 
 原作者只读审计副本：
 
-`~/aimapp_reproduction_audit/aimapp_ref`
+`~/SCA-AIFNav-Project/aimapp/audit/aimapp_ref`
 
 复现记录仓库：
 
-`~/AIMAPP-Reproduction`
+`~/SCA-AIFNav-Project/aimapp/reproduction`
 
 ## Mini Warehouse 当前启动基线
 

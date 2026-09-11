@@ -157,3 +157,28 @@ Gazebo、Nav2、ROS callback 时序以及 MCTS 随机性允许产生
 本记录之后生成的 run_001 才定义为新一轮基线实验数据。
 
 此前运行结果不得与新实验混合统计。
+
+## 10. AIMAPP 原生输出目录补充
+
+正式实验启动前进一步确认：
+
+AIMAPP 官方 `main.py` 在运行过程中会持续保存模型及 step 数据，
+其保存路径依赖启动时的当前工作目录。
+
+为避免正式实验再次在 AIMAPP 源码目录生成大型 `tests/<id>/`
+运行数据，对 reproduction 层的 A5 启动脚本增加
+`AIMAPP_RUN_CWD` 可选环境变量。
+
+该修改：
+
+- 不修改 AIMAPP 算法代码；
+- 不修改主动推断、MCTS、观测或运动逻辑；
+- 不关闭 AIMAPP 官方数据保存行为；
+- 仅改变生成实验文件的存储位置。
+
+正式 AIMAPP run 将设置：
+
+`AIMAPP_RUN_CWD=<对应 formal run>/aimapp_native`
+
+因此 AIMAPP 原生输出与 common recorder 输出将统一归属于同一次
+正式实验，而 AIMAPP runtime 源码工作区保持干净。

@@ -1081,3 +1081,37 @@ A1～A5 启动脚本中的旧 `$HOME/aimapp_ws` 路径已全部更新，并重�
 进一步检查确认：当前环境变量中不存在旧 AIMAPP workspace；AIMAPP、aimapp_actions 以及两个 AWS world package 均来自新的 `~/SCA-AIFNav-Project/aimapp/runtime_ws/install/`；当前脚本和 runtime 源码中不存在 `aimapp_reproduction_ws_old`、`aimapp_reproduction_ws` 或旧 `/home/mars/aimapp_ws` 路径引用。
 
 因此可以确认：统一目录迁移后的 Mini Warehouse + AIMAPP + Nav2 完整运行闭环验证通过，正式运行环境已解除对旧 `aimapp_reproduction_ws_old` 的运行依赖。
+
+---
+
+## 27. 旧 AIMAPP workspace 最终归档与删除
+
+完成统一目录迁移后的最终清理。删除旧
+`~/SCA-AIFNav-Project/aimapp/archive/aimapp_reproduction_ws_old`
+之前，对其中源码、仿真资源和实验输出进行了专项审计。
+
+审计确认旧 workspace 中约 3.4 GB 空间来自一组独立 AIMAPP 实验运行，
+与此前保存的 `2026-09-10_aimapp_runtime_snapshot/0` 并非同一次运行。
+该实验已完整保存至：
+
+`results/raw/2026-09-11_archive_old_ws_run0/`
+
+保存前后均为 240 个文件，并通过 rsync 基于文件内容的校验确认一致。
+大型原始实验数据继续由 `results/raw/` 的 Git 忽略规则管理，不上传 GitHub。
+
+旧 TurtleBot3 simulation 中 AIMAPP 使用的
+`turtlebot3_waffle_pi_plus` Gazebo 模型此前已迁移至 reproduction 仓库；
+此外，旧 workspace 中的 `turtlebot3_waffle_pi_plus.urdf`
+以及 TurtleBot3 launch 文件的本地修改也已分别保存为 legacy 资产和 patch。
+
+两个 AWS RoboMaker world 与当前 runtime 中的版本经目录比较无差异；
+旧 AIMAPP 与当前 runtime 的有效源码差异确认主要为已知的
+`PFClient` 到 `Nav2Client` 运动客户端切换。
+
+此前已在新目录结构下重新完整执行 A1～A5，
+Mini Warehouse、定制机器人模型、Nav2 和 AIMAPP Agent 均正常运行，
+且当前环境、源码及启动脚本均不存在对旧 workspace 的运行依赖。
+
+在上述数据与定制资产完成保存和验证后，
+旧 `aimapp_reproduction_ws_old` workspace 已删除。
+AIMAPP 复现环境的目录迁移与历史 workspace 清理至此完成。

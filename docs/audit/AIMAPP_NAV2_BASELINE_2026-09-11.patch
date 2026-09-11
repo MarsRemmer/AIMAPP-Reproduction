@@ -1,0 +1,9 @@
+diff --git a/aimapp/aimapp/main.py b/aimapp/aimapp/main.py
+index 05fd416..fd44af9 100644
+--- a/aimapp/aimapp/main.py
++++ b/aimapp/aimapp/main.py
+@@ -48,2 +48,2 @@ class HighLevelNav_ROSInterface(Node):
+-        #self.motion_client = Nav2Client()
+-        self.motion_client = PFClient()
++        self.motion_client = Nav2Client()
++        #self.motion_client = PFClient()

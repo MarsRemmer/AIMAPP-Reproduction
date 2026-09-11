@@ -10,6 +10,10 @@ set -e
 source /opt/ros/humble/setup.bash
 source "$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/install/setup.bash"
 
+START_X="${START_X:-0.0}"
+START_Y="${START_Y:-0.0}"
+START_YAW="${START_YAW:-0.0}"
+
 AIMAPP_SRC="$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/src/aimapp"
 
 # By default preserve the historical AIMAPP working directory.
@@ -51,4 +55,4 @@ echo "Working dir : $AIMAPP_RUN_CWD"
 echo "Native data : $AIMAPP_RUN_CWD/tests"
 echo "=========================================="
 
-exec ros2 launch aimapp agent_launch.py x:=0.0 y:=0.0
+exec ros2 launch aimapp agent_launch.py x:="$START_X" y:="$START_Y"

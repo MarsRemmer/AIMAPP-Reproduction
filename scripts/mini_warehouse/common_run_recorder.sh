@@ -19,6 +19,14 @@ source "$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/install/setup.bash"
 
 set -u
 
+START_X="${START_X:-0.0}"
+START_Y="${START_Y:-0.0}"
+START_YAW="${START_YAW:-0.0}"
+
+export START_X
+export START_Y
+export START_YAW
+
 METHOD="${1:-}"
 RUN_NAME="${2:-run_$(date +%Y%m%d_%H%M%S)}"
 MODE="${3:-}"
@@ -34,6 +42,10 @@ if [[ -z "$METHOD" ]]; then
 fi
 
 PROJECT_ROOT="$HOME/SCA-AIFNav-Project"
+
+START_X="${START_X:-0.0}"
+START_Y="${START_Y:-0.0}"
+START_YAW="${START_YAW:-0.0}"
 
 if [[ "$MODE" == "--check" ]]; then
     RESULT_ROOT="$PROJECT_ROOT/experiments/mini_warehouse/smoke"
@@ -97,6 +109,9 @@ export METHOD
 export RUN_NAME
 export RUN_DIR
 export TOPIC_REGEX
+export START_X
+export START_Y
+export START_YAW
 export AIMAPP_REPRO_COMMIT
 export AIMAPP_RUNTIME_COMMIT
 export SCA_COMMIT
@@ -117,8 +132,9 @@ metadata = {
     "robot": "waffle_pi_plus",
     "motion_backend": "nav2",
     "start_pose": {
-        "x": 0.0,
-        "y": 0.0,
+        "x": float(os.environ["START_X"]),
+        "y": float(os.environ["START_Y"]),
+        "yaw_rad": float(os.environ["START_YAW"]),
     },
     "baseline_influence_radius_m": 0.5,
     "started_at_utc": datetime.now(

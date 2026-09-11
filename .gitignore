@@ -2,3 +2,5 @@
 # New experiments belong in ~/SCA-AIFNav-Project/experiments/
 results/raw/
 results/mini_warehouse/
+__pycache__/
+*.py[cod]

@@ -17,6 +17,10 @@ set -e
 source /opt/ros/humble/setup.bash
 source "$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/install/setup.bash"
 
+START_X="${START_X:-0.0}"
+START_Y="${START_Y:-0.0}"
+START_YAW="${START_YAW:-0.0}"
+
 TB3_SHARE=$(
     ros2 pkg prefix turtlebot3_gazebo
 )/share/turtlebot3_gazebo
@@ -38,9 +42,10 @@ echo "=========================================="
 ros2 run gazebo_ros spawn_entity.py \
     -entity waffle_pi_plus \
     -file "$MODEL" \
-    -x 0.0 \
-    -y 0.0 \
-    -z 0.01
+    -x "$START_X" \
+    -y "$START_Y" \
+    -z 0.01 \
+    -Y "$START_YAW"
 
 echo
 echo "Robot spawned successfully."

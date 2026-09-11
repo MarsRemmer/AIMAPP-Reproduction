@@ -1081,3 +1081,27 @@ A1～A5 启动脚本中的旧 `$HOME/aimapp_ws` 路径已全部更新，并重�
 进一步检查确认：当前环境变量中不存在旧 AIMAPP workspace；AIMAPP、aimapp_actions 以及两个 AWS world package 均来自新的 `~/SCA-AIFNav-Project/aimapp/runtime_ws/install/`；当前脚本和 runtime 源码中不存在 `aimapp_reproduction_ws_old`、`aimapp_reproduction_ws` 或旧 `/home/mars/aimapp_ws` 路径引用。
 
 因此可以确认：统一目录迁移后的 Mini Warehouse + AIMAPP + Nav2 完整运行闭环验证通过，正式运行环境已解除对旧 `aimapp_reproduction_ws_old` 的运行依赖。
+
+---
+
+# 2026-09-11 目录迁移后运行验证补充记录
+
+## 26. Mini Warehouse 新目录运行验证与隐藏依赖修复
+
+在统一目录结构下重新执行 A1～A5 时，A3 首次启动失败。排查确认系统 `/opt/ros/humble/share/turtlebot3_gazebo/models/` 中不存在 AIMAPP 使用的 `turtlebot3_waffle_pi_plus`，该模型此前仅存在于旧 `aimapp_reproduction_ws` 的 TurtleBot3 simulation 源码中。
+
+进一步对比发现，`turtlebot3_waffle_pi_plus` 并非标准 `turtlebot3_waffle_pi` 的简单重命名。AIMAPP 定制模型增加了前、左、右三路相机，并修改了激光雷达量程等配置，因此不能直接替换为系统标准模型，否则会改变 AIMAPP 的观测条件。
+
+模型本体约 80 KB，其引用的 `waffle_pi_base.dae`、`lds.dae` 和 `tire.dae` 等 mesh 已存在于系统 `turtlebot3_gazebo` 安装目录，因此无需迁移完整的旧 TurtleBot3 simulation package。
+
+最终仅提取 AIMAPP 所需的 `turtlebot3_waffle_pi_plus` 模型，并纳入 reproduction 仓库：
+
+`assets/gazebo_models/turtlebot3_waffle_pi_plus/`
+
+同时修改 `baseline_A_3_spawn_robot.sh`，改为使用相对于 reproduction 仓库的模型路径，不再依赖旧 workspace 或固定的 `/home/mars/...` 模型绝对路径。
+
+修改后重新执行 A1～A5，Gazebo、机器人 spawn、Nav2 和 AIMAPP Agent 均正常运行，机器人能够正常开始自主导航。
+
+进一步检查确认：当前环境变量中不存在旧 AIMAPP workspace；AIMAPP、aimapp_actions 以及两个 AWS world package 均来自新的 `~/SCA-AIFNav-Project/aimapp/runtime_ws/install/`；当前脚本和 runtime 源码中不存在 `aimapp_reproduction_ws_old`、`aimapp_reproduction_ws` 或旧 `/home/mars/aimapp_ws` 路径引用。
+
+因此可以确认：统一目录迁移后的 Mini Warehouse + AIMAPP + Nav2 完整运行闭环验证通过，正式运行环境已解除对旧 `aimapp_reproduction_ws_old` 的运行依赖。

@@ -48,9 +48,9 @@ START_Y="${START_Y:-0.0}"
 START_YAW="${START_YAW:-0.0}"
 
 if [[ "$MODE" == "--check" ]]; then
-    RESULT_ROOT="$PROJECT_ROOT/experiments/mini_warehouse/smoke"
+    RESULT_ROOT="$PROJECT_ROOT/results/mini_warehouse/smoke"
 else
-    RESULT_ROOT="$PROJECT_ROOT/experiments/mini_warehouse/formal"
+    RESULT_ROOT="$PROJECT_ROOT/results/mini_warehouse/formal"
 fi
 
 RUN_DIR="$RESULT_ROOT/$METHOD/$RUN_NAME"
@@ -92,7 +92,7 @@ git_sha_or_unknown()
 
 AIMAPP_REPRO_COMMIT="$(
     git_sha_or_unknown \
-    "$PROJECT_ROOT/aimapp/reproduction"
+    "$PROJECT_ROOT/experiments"
 )"
 
 AIMAPP_RUNTIME_COMMIT="$(

@@ -5,8 +5,8 @@ set -eo pipefail
 ROOT="$HOME/SCA-AIFNav-Project"
 REPRO="$ROOT/experiments"
 EXP="$ROOT/results/mini_warehouse"
-PROBE_DIR="$EXP/_tmp/start_pose_probe"
-CSV="$REPRO/configs/mini_warehouse/start_poses.csv"
+PROBE_DIR="$EXP/calibration/reference_coverage_probe_v4"
+OUT="$EXP/reference_coverage_v4"
 
 source /opt/ros/humble/setup.bash
 source "$ROOT/aimapp/runtime_ws/install/setup.bash"
@@ -238,19 +238,26 @@ echo "============================================================"
 echo "PROBING REAL GAZEBO FREE SPACE"
 echo "============================================================"
 
+rm -rf "$OUT"
+mkdir -p "$OUT"
+
 python3 \
-    "$REPRO/scripts/mini_warehouse/probe_start_poses.py" \
-    --output "$CSV" \
-    --count 10 \
-    --min-coordinate -2.5 \
-    --max-coordinate 2.5 \
-    --step 0.5 \
-    --minimum-clearance 0.35
+    "$REPRO/scripts/mini_warehouse/reference_coverage_probe.py" \
+    --output-dir "$OUT" \
+    --min-coordinate -3.0 \
+    --max-coordinate 3.0 \
+    --step 0.25 \
+    --minimum-clearance 0.35 \
+    --resolution 0.05 \
+    --map-size-m 40.0 \
+    --max-ray-range-m 12.0 \
+    --occupied-hit-threshold 2
+
 
 
 echo
 echo "============================================================"
-echo "START POSE PROBE COMPLETE"
+echo "REFERENCE COVERAGE PROBE COMPLETE"
 echo "============================================================"
 
-cat "$CSV"
+cat "$OUT/reference_coverage_summary.json"

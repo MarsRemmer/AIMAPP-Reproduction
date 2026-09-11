@@ -3,9 +3,9 @@
 set -eo pipefail
 
 ROOT="$HOME/SCA-AIFNav-Project"
-REPRO="$ROOT/aimapp/reproduction"
+REPRO="$ROOT/experiments"
 SCA_SRC="$ROOT/sca_aifnav/runtime_ws/src/sca_aifnav"
-EXP="$ROOT/experiments/mini_warehouse"
+EXP="$ROOT/results/mini_warehouse"
 SMOKE="$EXP/smoke/sca_nonzero_candidate_2"
 
 START_X="-2.5"

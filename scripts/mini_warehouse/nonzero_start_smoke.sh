@@ -3,8 +3,8 @@
 set -eo pipefail
 
 ROOT="$HOME/SCA-AIFNav-Project"
-REPRO="$ROOT/aimapp/reproduction"
-EXP="$ROOT/experiments/mini_warehouse"
+REPRO="$ROOT/experiments"
+EXP="$ROOT/results/mini_warehouse"
 SMOKE="$EXP/smoke/nonzero_start_candidate_2"
 
 START_X="-2.5"

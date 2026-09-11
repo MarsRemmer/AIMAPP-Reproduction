@@ -3,12 +3,12 @@
 set -eo pipefail
 
 ROOT="$HOME/SCA-AIFNav-Project"
-REPRO="$ROOT/aimapp/reproduction"
+REPRO="$ROOT/experiments"
 AIMAPP_RUNTIME="$ROOT/aimapp/runtime_ws/src/aimapp"
 SCA="$ROOT/sca_aifnav/runtime_ws/src/sca_aifnav"
-EXP="$ROOT/experiments/mini_warehouse"
+EXP="$ROOT/results/mini_warehouse"
 
-POSES="$EXP/start_poses.csv"
+POSES="$REPRO/configs/mini_warehouse/start_poses.csv"
 
 TARGET_PAIRS="${TARGET_PAIRS:-5}"
 

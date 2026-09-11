@@ -26,13 +26,26 @@ AIMAPP_RUN_CWD="${AIMAPP_RUN_CWD:-$AIMAPP_SRC}"
 # agent_launch.py assumes that <cwd>/tests exists.
 mkdir -p "$AIMAPP_RUN_CWD/tests"
 
-# Official AIMAPP Python files are not executable in the checked-out repository.
-# With --symlink-install the installed executables point directly to these files.
-chmod +x \
-    "$AIMAPP_SRC/aimapp/aimapp/main.py" \
-    "$AIMAPP_SRC/aimapp/aimapp/obs_transf/get_pano_multiple_camera_action.py" \
-    "$AIMAPP_SRC/aimapp/aimapp/motion/potential_field_action.py" \
-    "$AIMAPP_SRC/aimapp/aimapp/motion/align_odom_to_belief.py"
+# AIMAPP is built as a normal CMake install.
+# Runtime executables are independent copies and source permissions
+# must never be changed by the experiment launcher.
+AIMAPP_PREFIX="$(ros2 pkg prefix aimapp)"
+AIMAPP_LIBEXEC="$AIMAPP_PREFIX/lib/aimapp"
+
+for executable in main.py get_pano_multiple_camera_action.py potential_field_action.py align_odom_to_belief.py
+do
+    installed="$AIMAPP_LIBEXEC/$executable"
+
+    if [[ ! -x "$installed" ]]; then
+        echo "ERROR: AIMAPP executable unavailable: $installed"
+        exit 1
+    fi
+
+    if [[ -L "$installed" ]]; then
+        echo "ERROR: AIMAPP executable is still a symlink: $installed"
+        exit 1
+    fi
+done
 
 # This baseline requires Nav2Client to be the active AIMAPP motion client.
 if ! grep -Eq '^[[:space:]]*self\.motion_client = Nav2Client\(\)' \

@@ -52,6 +52,8 @@ A5_AIM="$HARNESS/scripts/mini_warehouse/baseline_A_5_agent.sh"
 REC="$HARNESS/scripts/mini_warehouse/common_run_recorder.sh"
 COV="$HARNESS/scripts/mini_warehouse/run_coverage_monitor.sh"
 COV_PY="$HARNESS/scripts/mini_warehouse/coverage_monitor.py"
+VIZ="$HARNESS/scripts/mini_warehouse/run_coverage_visualizer.sh"
+VIZ_PY="$HARNESS/scripts/mini_warehouse/coverage_visualizer.py"
 A5_SCA="$SCA/scripts/mini_warehouse/baseline_A_5_sca.sh"
 
 BATCH_ID="${BATCH_ID:-$(date +%Y%m%d_%H%M%S)}"
@@ -63,6 +65,7 @@ A4_PID=""
 A5_PID=""
 REC_PID=""
 COV_PID=""
+VIZ_PID=""
 
 CURRENT_METHOD=""
 CURRENT_RUN=""
@@ -144,6 +147,10 @@ cleanup_current_run()
 {
     set +e
 
+    # Finalize visualization while coverage/ROS sources are still alive.
+    stop_group "$VIZ_PID" 20
+    VIZ_PID=""
+
     # Finalize coverage while ROS/TF sources are still alive.
     stop_group "$COV_PID" 20
     COV_PID=""
@@ -202,6 +209,7 @@ preflight()
         "$A5_AIM" \
         "$REC" \
         "$COV" \
+        "$VIZ" \
         "$A5_SCA"
     do
         if [[ ! -f "$f" ]]; then
@@ -219,6 +227,16 @@ preflight()
 
     if [[ ! -f "$COV_PY" ]]; then
         echo "ERROR: missing $COV_PY"
+        exit 1
+    fi
+
+    if [[ ! -f "$VIZ_PY" ]]; then
+        echo "ERROR: missing $VIZ_PY"
+        exit 1
+    fi
+
+    if ! grep -q "coverage_exploration.mp4" "$VIZ_PY"; then
+        echo "ERROR: coverage visualizer does not create an MP4."
         exit 1
     fi
 
@@ -587,6 +605,25 @@ run_one()
     fi
 
     # --------------------------------------------------------
+    # Coverage visualization + video
+    # --------------------------------------------------------
+    mkdir -p "$CURRENT_RUN_DIR/visualization"
+
+    SHOW=0 \
+    setsid bash "$VIZ" "$CURRENT_RUN_DIR/visualization" \
+        > "$CURRENT_RUN_DIR/logs/coverage_visualizer.log" \
+        2>&1 &
+
+    VIZ_PID=$!
+
+    sleep 3
+
+    if ! kill -0 "$VIZ_PID" 2>/dev/null; then
+        echo "WARNING: coverage visualizer exited during startup."
+        cat "$CURRENT_RUN_DIR/logs/coverage_visualizer.log" || true
+    fi
+
+    # --------------------------------------------------------
     # Common rosbag recorder
     # --------------------------------------------------------
     START_X="$sx" \
@@ -742,6 +779,29 @@ run_one()
     # Preserve final messages before finalizing measurement.
     sleep 3
 
+    # Finalize video first while coverage topics still exist.
+    stop_group "$VIZ_PID" 20
+    VIZ_PID=""
+
+    visualization_status="incomplete"
+
+    if [[ \
+        -s "$CURRENT_RUN_DIR/visualization/visualization_summary.json" \
+        && -s "$CURRENT_RUN_DIR/visualization/coverage_final.png" \
+        && ( \
+            -s "$CURRENT_RUN_DIR/visualization/coverage_exploration.mp4" \
+            || -s "$CURRENT_RUN_DIR/visualization/coverage_exploration.avi" \
+        ) \
+    ]]; then
+        visualization_status="complete"
+
+        # Frames are only intermediate products. Keep final stills/video.
+        rm -rf "$CURRENT_RUN_DIR/visualization/frames"
+    else
+        echo "WARNING: coverage video output is incomplete."
+        cat "$CURRENT_RUN_DIR/logs/coverage_visualizer.log" || true
+    fi
+
     stop_group "$COV_PID" 20
     COV_PID=""
 
@@ -806,6 +866,7 @@ status=$(
 )
 reason=$reason
 measurement_status=$measurement_status
+visualization_status=$visualization_status
 method=$method
 candidate=$candidate
 start_x=$sx

@@ -77,3 +77,13 @@ SCA-AIFNav 负责状态推断、认知地图、结构复杂度、Expected Free E
 Nav2 负责目标确定后的路径规划、局部避障、轨迹跟踪与运动控制。
 
 原作者 Potential Field 保留作为 AIMAPP 公开代码运动层复现基线。
+
+## AIMAPP custom TurtleBot3 model
+
+AIMAPP Mini Warehouse uses the custom `turtlebot3_waffle_pi_plus` Gazebo model rather than the standard ROS2 Humble `turtlebot3_waffle_pi` model.
+
+The required model is version-controlled at:
+
+`assets/gazebo_models/turtlebot3_waffle_pi_plus/`
+
+The model provides the front/left/right camera configuration required by AIMAPP and is spawned directly by `baseline_A_3_spawn_robot.sh`.

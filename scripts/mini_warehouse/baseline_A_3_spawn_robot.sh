@@ -25,7 +25,7 @@ TB3_DESC=$(
     ros2 pkg prefix turtlebot3_description
 )/share/turtlebot3_description
 
-MODEL="$TB3_SHARE/models/turtlebot3_waffle_pi_plus/model.sdf"
+MODEL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/assets/gazebo_models/turtlebot3_waffle_pi_plus/model.sdf"
 URDF="$TB3_DESC/urdf/turtlebot3_waffle_pi.urdf"
 
 echo "=========================================="

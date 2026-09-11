@@ -47,3 +47,13 @@ Potential Field 仅保留为原作者公开代码的复现基线，不再作为�
 详细闭环验证见：
 
 `docs/PR01_MINI_WAREHOUSE_SMOKE.md`
+
+## AIMAPP 定制 TurtleBot3 模型
+
+Mini Warehouse 不能直接使用系统 ROS2 Humble 中的标准 `turtlebot3_waffle_pi` 替代 AIMAPP 的 `turtlebot3_waffle_pi_plus`。后者包含 AIMAPP 所需的前、左、右三路相机配置，并具有不同的激光雷达配置。
+
+定制模型现统一保存在：
+
+`assets/gazebo_models/turtlebot3_waffle_pi_plus/`
+
+A3 启动脚本直接从 reproduction 仓库读取该模型，因此正式运行已不再依赖旧 `aimapp_reproduction_ws_old` 中的 TurtleBot3 simulation 源码。

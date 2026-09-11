@@ -1,0 +1,1132 @@
+# AIMAPP / SCA-AIFNav 复现与基线一致性验证工作报告
+
+**日期：2026年9月11日**
+**项目：AIMAPP 复现 / SCA-AIFNav 基线重实现一致性验证**
+**当前阶段：正式大规模基线实验前的最后验证与实验测量链路完善**
+
+---
+
+## 一、今日工作目标
+
+今天的核心目标不是继续增加 SCA-AIFNav 的创新模块，而是完成 AIMAPP 原实现与 SCA-AIFNav 基线重实现之间的关键一致性检查，并把后续正式实验所需要的运行、记录、测量和可视化链路尽可能稳定下来。
+
+本阶段的基本原则保持不变：
+
+> **SCA-AIFNav 当前基线版本应与 AIMAPP 在算法逻辑上保持一致，现阶段验证目标是“重实现是否能够复现 AIMAPP 的行为”，而不是证明 SCA-AIFNav 优于 AIMAPP。**
+
+今天主要完成以下工作：
+
+1. 定位并修复 SCA-AIFNav 状态后验推断与 AIMAPP 原实现之间的数值语义差异；
+2. 完成修复后的单元测试、核心回归测试、编译和 Gazebo/Nav2 实际运行验证；
+3. 完成 Coverage Monitor V3.1 的干净短程验证和探索过程可视化验证；
+4. 重新审查并统一探索覆盖率的统计定义；
+5. 将 coverage 与 occupancy confidence 解耦，建立 ever-observed coverage 指标；
+6. 完善 Mini Warehouse Reference Evaluator，加入真实 LiDAR 位姿、连通区域筛选、40 m evaluator canvas 及原始栅格保存；
+7. 初步得到 Mini Warehouse 的参考覆盖范围，但决定暂不继续过度优化覆盖率停止阈值；
+8. 明确下一阶段正式实验方案：AIMAPP 和 SCA-AIFNav 在两个地图中分别完成 5 次、每次 200 个高层动作的正式实验，并完整保存失败与成功数据。
+
+---
+
+# 二、SCA-AIFNav 状态后验推断一致性问题定位
+
+## 2.1 问题现象
+
+此前在一次 SCA-AIFNav + Nav2 + Coverage Visualizer 的 3-action 运行中，机器人已经成功完成多个 Nav2 目标，但在后续状态推断过程中出现异常：
+
+```text
+ValueError: posterior cannot be normalized
+```
+
+对应调用链最终落在 SCA-AIFNav 的状态后验推断逻辑中。该问题不是 Nav2 导航失败，也不是 Gazebo 仿真失败，而是生成模型状态推断阶段出现全零 posterior，导致无法继续归一化。
+
+这说明 SCA-AIFNav 虽然在宏观算法流程上已经复现 AIMAPP，但在数值实现细节上仍存在一个重要的不一致。
+
+## 2.2 原 SCA-AIFNav 推断方式
+
+修复前，SCA-AIFNav 的状态后验推断逻辑本质上是：
+
+1. 由状态转移模型得到 prior；
+2. 根据当前 sensory observation / place observation 选择对应 likelihood；
+3. 直接执行 `posterior_weight = prior × likelihood`；
+4. 再执行 `posterior = posterior_weight / sum(posterior_weight)`。
+
+该方式在一般情况下成立，但当 prior 和 likelihood 的非零支撑完全不重叠时，会得到全零 posterior，此时无法归一化。
+
+## 2.3 与 AIMAPP 原实现对照
+
+进一步对照 AIMAPP 固定版本中的 pymdp 状态更新逻辑后发现，AIMAPP 并不是直接在普通概率空间做“乘法后归一化”。
+
+AIMAPP 中的关键数值语义包括：
+
+```text
+EPS_VAL = 1e-16
+```
+
+在进入对数运算前执行 `log(x + EPS_VAL)`，随后在 log-space 中组合 prior 和 likelihood，并通过数值稳定的 Softmax 得到后验概率。
+
+因此，即使 prior 或 likelihood 中存在精确的 0，也不会产生不可恢复的全零归一化问题。
+
+这一行为属于 AIMAPP 原实现的数值推断语义。由于当前 SCA-AIFNav 处于基线重实现一致性验证阶段，因此必须复现这一行为。
+
+---
+
+# 三、SCA-AIFNav 后验推断修复
+
+## 3.1 修复方案
+
+在 `BaselineGenerativeModel.infer_state_belief()` 中加入：
+
+```text
+AIMAPP_LOG_EPSILON = 1e-16
+```
+
+并将原来的直接乘法归一化修改为 AIMAPP 对应的单隐状态因子 log-space 推断：
+
+```text
+joint_likelihood = product_m A_m[o_m | s]
+
+log_posterior =
+    log(joint_likelihood + EPS)
+    + log(prior + EPS)
+
+posterior = softmax(log_posterior)
+```
+
+Softmax 前减去最大值，从而保持数值稳定。
+
+该修改的性质明确为：
+
+> **AIMAPP 基线重实现一致性修复，而不是新的 SCA-AIFNav 算法创新。**
+
+## 3.2 对应测试修改
+
+由于 AIMAPP 的 epsilon regularization 会使理论上的精确零变成极小非零概率，因此此前若干严格检查 `[0, 1]` 的测试需要允许极小的 epsilon 残余。
+
+主要涉及：
+
+- cognitive growth；
+- imagined linking；
+- real experience；
+- single-step A/B learning golden test；
+- generative model posterior test。
+
+同时新增专门的回归测试：
+
+```text
+test_zero_support_inference_matches_aimapp_log_regularization
+```
+
+该测试构造了“prior 与 likelihood 非零支撑完全错开”的情况，确保 SCA-AIFNav 与 AIMAPP 的 epsilon + log-space + softmax 参考计算完全一致。
+
+---
+
+# 四、后验推断修复验证结果
+
+## 4.1 核心测试
+
+完成针对性测试后，又执行了完整 core regression：
+
+```text
+535 passed, 1 skipped
+```
+
+仅出现与 pytest/flake8 依赖有关的弃用 warning，不影响算法正确性。
+
+## 4.2 编译结果
+
+重新编译 `sca_aifnav_core` 与 `sca_aifnav_ros` 均正常完成。
+
+## 4.3 Installed runtime 数值验证
+
+构造：
+
+```text
+likelihood = [0.00, 0.01]
+prior      = [1.00, 0.00]
+epsilon    = 1e-16
+```
+
+安装后的 SCA-AIFNav runtime 输出：
+
+```text
+posterior = [0.99009901, 0.00990099]
+```
+
+与按照 AIMAPP log-space 语义直接计算得到的 reference 完全一致。
+
+因此确认：
+
+> **安装后的运行版本已经真正采用 AIMAPP-compatible state inference，而不是仅修改了源码但没有进入 runtime。**
+
+---
+
+# 五、修复后的 Gazebo / Nav2 实际运行验证
+
+## 5.1 非零起点坐标对齐
+
+继续采用此前验证过的 Candidate 2：
+
+```text
+physical start = (-2.5, -2.5)
+```
+
+实际 Gazebo `/odom`：
+
+```text
+(-2.499, -2.500)
+```
+
+SCA 认知坐标 `/agent/odom`：
+
+```text
+(0.000, 0.000)
+```
+
+误差：
+
+```text
+raw-vs-start error = 0.001 m
+agent-origin error = 0.000 m
+```
+
+说明“非零物理起点 → 认知原点”的坐标对齐逻辑仍然正确。
+
+## 5.2 3-action smoke
+
+修复后重新执行相同 3-action smoke。Nav2 goal 均可以正常发送、接受和执行，最终：
+
+```text
+EXPERIMENT_COMPLETE actions=3 limit=3
+RUNTIME_RESULT=SUCCESS
+```
+
+此前的：
+
+```text
+posterior cannot be normalized
+```
+
+未再出现。
+
+因此该问题已经完成：
+
+1. 单元测试验证；
+2. 核心回归验证；
+3. installed runtime 数值验证；
+4. ROS2/Gazebo/Nav2 实际运行验证。
+
+---
+
+# 六、SCA-AIFNav 修复提交
+
+后验推断修复已经独立提交至 SCA-AIFNav GitHub 主分支：
+
+```text
+3337697 fix: match AIMAPP log-space state inference
+```
+
+提交内容严格限制为生成模型及相关测试文件，没有混入 Coverage Monitor、Reference Evaluator 等实验测量工具。
+
+这样可以明确区分：
+
+- 算法基线代码修改；
+- 外部实验评价工具修改。
+
+---
+
+# 七、Coverage Monitor V3.1 测量链路验证
+
+## 7.1 目的
+
+AIMAPP 原代码中的 coverage 数据依赖 `/map`，但当前 AIMAPP + Nav2 和 SCA + Nav2 的正式复现实验需要使用完全一致的独立评价链路。
+
+因此建立外部 Coverage Monitor：
+
+> **只监听传感器和里程计数据，不向 AIMAPP 或 SCA-AIFNav 返回任何信息。**
+
+该模块只承担“实验测量仪器”的角色，不参与导航决策。
+
+## 7.2 V3.1 已解决的问题
+
+Coverage Monitor V3.1 重点完成：
+
+1. 使用 LaserScan 原始 `header.stamp` 查询 TF；
+2. 不再使用“最新 TF”代替扫描时刻 TF，避免运动过程中墙体被空间涂抹；
+3. 建立独立 TF listener node/thread；
+4. 使用真实 scan frame 的位姿作为 LiDAR 射线起点；
+5. 维护独立稀疏栅格集合；
+6. 保存 CSV、JSON、PNG 等实验数据；
+7. 完善 SIGINT/TERM 后的文件收尾与辅助进程清理。
+
+## 7.3 干净 V3.1 短程实验结果
+
+一轮 SCA 3-action 成功实验中：
+
+```text
+received scans          = 624
+processed scans         = 204
+TF failures             = 14
+TF success ratio        = 93.6%
+distance                = 0.972 m
+initial known area      = 2.115 m²
+final known area        = 2.230 m²
+known growth            = 0.115 m²
+free area               = 1.600 m²
+occupied area           = 0.630 m²
+known-area decreases    = 0
+```
+
+并确认：
+
+```text
+TF timestamp mode = scan_header_stamp
+TF listener mode  = dedicated_thread
+```
+
+因此 V3.1 的短程测量链可以正常工作。
+
+---
+
+# 八、探索过程可视化验证
+
+Coverage Visualizer 与 V3.1 monitor 联合测试通过。
+
+一次完整干净运行中：
+
+```text
+frames_saved      = 17
+trajectory_points = 42
+```
+
+成功生成：
+
+- 最终 coverage PNG；
+- 原始 MP4；
+- H.264 / yuv420p MP4。
+
+同时验证：
+
+```text
+PASS: no stale helper processes
+```
+
+避免旧 monitor / visualizer 残留进程污染下一次实验。
+
+---
+
+# 九、重新审查 AIMAPP 官方 coverage 定义
+
+通过检查 AIMAPP 官方 `save_data.py`，确认其覆盖统计方式为：
+
+```python
+self.visited_cells = np.count_nonzero(map_array != -1)
+```
+
+即：
+
+> **地图中只要一个栅格已经不再是 unknown，就计入 explored / visited coverage。**
+
+因此覆盖率关注的是“是否已经被观测”，而不是“最终被分类为 free 还是 occupied”。
+
+---
+
+# 十、发现原 V3.1 coverage 与 occupancy confidence 耦合
+
+此前 V3.1 使用：
+
+```text
+known_cells = free_cells ∪ occupied_cells
+```
+
+同时为了避免单次 LiDAR 噪声永久产生墙体，使用：
+
+```text
+occupied_hit_threshold = 2
+```
+
+这会产生一个问题：某个 LiDAR endpoint 第一次已经被传感器直接观测到，但由于只有一次 hit，它还没有进入 `occupied_cells`，因此暂时不会计入 `known_cells`。
+
+即：
+
+> **coverage 是否增加受到 occupancy confidence threshold 的影响。**
+
+这与 AIMAPP 官方“只要非 unknown 就算已探索”的统计语义不完全一致。
+
+---
+
+# 十一、建立 Ever-Observed Coverage
+
+为解决上述问题，引入独立的：
+
+```text
+ever_observed_cells
+```
+
+定义：
+
+> **某栅格只要至少被一条有效 LiDAR ray 直接观测过一次，就永久进入 ever-observed set。**
+
+因此正式 coverage 定义变为：
+
+```text
+known_area_m2
+= |ever_observed_cells| × resolution²
+```
+
+occupancy 分类单独保留：
+
+```text
+free
+candidate occupied
+confirmed occupied
+```
+
+从而实现：
+
+> **Coverage 与 occupancy confidence 正式解耦。**
+
+`occupied_hit_threshold = 2` 只决定地图中的障碍物是否达到 confirmed occupied，不再决定该区域是否已经探索。
+
+---
+
+# 十二、Ever-Observed 3-action 验证
+
+修改 runtime monitor 后重新执行相同 SCA 3-action smoke。
+
+结果：
+
+```text
+schema version          = 3
+coverage semantics      = ever_observed_lidar_cells
+processed scans         = 210
+distance                = 0.933 m
+free cells              = 657
+occupied cells          = 240
+candidate observed      = 17
+ever observed / known   = 914
+known area              = 2.285 m²
+unconfirmed hits        = 17
+known decreases         = 0
+grid known              = 914
+grid candidate          = 17
+```
+
+并满足：
+
+```text
+914 = 657 + 240 + 17
+```
+
+验证结果：
+
+```text
+PASS: ever-observed canonical coverage is internally consistent
+```
+
+这一步确认新的 coverage 定义在实际运行过程中保持：
+
+- 单调；
+- 可解释；
+- 与 raw grid 一致；
+- 与 occupancy 分类解耦。
+
+---
+
+# 十三、Mini Warehouse Reference Evaluator 初版问题
+
+为了进一步判断环境理论上最多能探索多少面积，此前建立 Reference Coverage Probe，通过在 Gazebo 中密集 teleport 机器人并整合 LiDAR 扫描，近似得到 `C_max`。
+
+早期版本得到：
+
+```text
+C_max = 33.773 m²
+```
+
+但后续验证发现该值不能使用，主要原因包括：
+
+1. reference ray 起点使用机器人中心，而 runtime monitor 使用真实 LiDAR 位姿；
+2. reference 一次 endpoint hit 就永久标 occupied，而 runtime monitor 使用 2-hit confidence；
+3. probe 搜索范围有限；
+4. reference 没有过滤与起点不连通的无碰撞区域；
+5. evaluator canvas 尺寸和 runtime monitor 不完全一致。
+
+因此旧 `33.773 m²` 被明确标记为：
+
+```text
+INVALID / historical only
+```
+
+---
+
+# 十四、Reference Evaluator V4
+
+为修复上述问题，建立 V4 reference evaluator。
+
+## 14.1 使用真实 Gazebo LiDAR 位姿
+
+通过 Gazebo entity state 成功解析：
+
+```text
+waffle_pi_plus::base_scan
+```
+
+不再退回机器人中心作为射线起点。
+
+## 14.2 扩大 evaluator canvas
+
+统一使用：
+
+```text
+resolution = 0.05 m
+map size   = 40 m × 40 m
+LiDAR max  = 12 m
+```
+
+验证：
+
+```text
+clipped ray endpoints = 0
+```
+
+## 14.3 原点连通区域筛选
+
+V4 在局部 collision-valid pose 中进一步提取与原点连通的 component，只允许这些位置参与 reference coverage。
+
+一次 V4 运行中：
+
+```text
+locally valid    = 181
+connected valid  = 158
+disconnected     = 23
+```
+
+后续运行中由于 Gazebo/单帧 LiDAR 判定存在轻微波动，数量出现一定变化，这也是后续没有立即把 C_max 当成正式停止阈值的原因之一。
+
+---
+
+# 十五、Reference Evaluator V4.1：Ever-Observed 语义
+
+在 runtime monitor 改为 ever-observed coverage 后，reference evaluator 同样改为完全一致的 coverage 定义。
+
+最新一次 V4.1 运行结果：
+
+```text
+schema version       = 5
+evaluator revision   = v4.1-ever-observed
+coverage semantics   = ever_observed_lidar_cells
+
+tested poses         = 625
+locally valid        = 190
+connected accepted   = 165
+disconnected valid   = 25
+
+free cells           = 10197
+candidate cells      = 41
+occupied cells       = 1159
+known cells          = 11397
+
+free area            = 25.493 m²
+occupied area        = 2.898 m²
+candidate area       = 0.103 m²
+C_max                = 28.493 m²
+95% provisional      = 27.068 m²
+unconfirmed hits     = 56
+clipped endpoints    = 0
+cumulative decreases = 0
+```
+
+内部一致性检查通过：
+
+```text
+PASS: ever-observed reference is internally consistent
+```
+
+---
+
+# 十六、关于 C_max 和 95% 阈值的当前结论
+
+虽然 Reference Evaluator 已经比早期版本可靠得多，但当前仍然不将：
+
+```text
+C_max ≈ 28.49 m²
+```
+
+以及：
+
+```text
+0.95 × C_max ≈ 27.07 m²
+```
+
+作为正式实验停止条件。
+
+主要原因是：相同参数下不同 dense probe 运行的 locally-valid / connected-valid pose 数量存在一定差异，说明单帧 LiDAR minimum clearance + Gazebo teleport 的有效位置判定具有轻微运行波动。
+
+因此当前 C_max 的定位是：
+
+> **诊断性参考值，而非正式实验终止阈值。**
+
+今天最终决定停止继续在该问题上投入大量时间，优先开始真正的大规模基线实验。
+
+---
+
+# 十七、正式实验停止条件的最终决定
+
+下一阶段 AIMAPP 与 SCA-AIFNav 基线正式实验统一采用：
+
+```text
+200 completed high-level actions
+```
+
+作为停止条件。
+
+Coverage Monitor 将继续记录：
+
+```text
+coverage vs distance
+```
+
+但：
+
+> **Coverage 不参与提前停止。**
+
+这样可以避免尚未完全稳定的 C_max / saturation threshold 影响基线复现结果。
+
+---
+
+# 十八、正式基线实验目的
+
+现阶段 SCA-AIFNav Baseline 与 AIMAPP 的关系应明确表述为：
+
+> **SCA-AIFNav 当前基线版本是对 AIMAPP 算法逻辑的 ROS2/Python 工程化重实现。当前实验的目标是验证两者在相同环境、相同机器人、相同感知条件、相同 Nav2 后端和相同初始条件下，是否表现出统计上相近的探索和导航行为。**
+
+因此本阶段不是：
+
+```text
+AIMAPP vs 改进版 SCA
+```
+
+而是：
+
+```text
+AIMAPP original implementation
+vs
+SCA-AIFNav baseline reimplementation
+```
+
+即：
+
+> **重实现一致性验证 / AIMAPP 基线复现验证。**
+
+只有这一阶段完成之后，才正式引入 SCA-AIFNav 的结构复杂度自适应节点影响半径等创新机制。
+
+---
+
+# 十九、正式实验环境规划
+
+## 19.1 环境一：Mini Warehouse
+
+当前已经完成：
+
+- Gazebo 启动验证；
+- TurtleBot3 Waffle Pi Plus 生成验证；
+- 非零起点验证；
+- `/odom` 与 `/agent/odom` 对齐验证；
+- Nav2 goal 实际执行验证；
+- AIMAPP/SCA baseline 运行链路验证；
+- SCA 200-action limit 功能验证；
+- Coverage Monitor 验证；
+- Coverage Visualizer 验证；
+- 起点候选生成；
+- paired formal runner 基础框架。
+
+因此 Mini Warehouse 已接近可以直接进入正式 5×200 paired experiment。
+
+## 19.2 环境二：AWS RoboMaker Smaller Warehouse
+
+第二个环境优先选择 AIMAPP 原项目中已经提供的：
+
+```text
+aws_robomaker_warehouse_smaller
+```
+
+原因：
+
+1. 属于 AIMAPP 原仓库已有环境；
+2. AIMAPP 已提供对应 world launch；
+3. AIMAPP 的 `warehouse_spawn_nav2_launch.py` 也使用该环境；
+4. 比完全新引入第三方地图更容易保证复现条件一致；
+5. 可以形成“小型仓库 + 更大仓库”的两环境对比。
+
+正式运行第二个环境前仍需完成一次短 smoke：
+
+- Gazebo world path；
+- 模型资源；
+- Nav2 static map；
+- 安全起点；
+- nonzero origin alignment；
+- 3-action AIMAPP/SCA smoke。
+
+---
+
+# 二十、正式实验规模
+
+计划：
+
+```text
+AIMAPP + Nav2
+SCA-AIFNav Baseline + Nav2
+```
+
+在：
+
+```text
+Mini Warehouse
+Smaller Warehouse
+```
+
+中各完成至少：
+
+```text
+5 次成功实验
+```
+
+每次：
+
+```text
+200 completed high-level actions
+```
+
+因此最低正式成功实验量为：
+
+```text
+2 methods × 2 environments × 5 runs
+= 20 successful 200-action trials
+```
+
+AIMAPP 与 SCA-AIFNav 尽可能使用相同起点进行 paired comparison。
+
+---
+
+# 二十一、失败实验处理原则
+
+正式实验中：
+
+> **失败实验不删除、不覆盖、不人工筛掉。**
+
+失败情况例如：
+
+- panorama acquisition failure；
+- Nav2 unrecoverable failure；
+- algorithm process death；
+- timeout；
+- Gazebo startup failure；
+- sensor/TF failure；
+- 其他异常。
+
+均应保存：
+
+```text
+status=failure
+reason=<具体失败原因>
+```
+
+并保留日志和原始数据。
+
+论文要求的 5 次成功 trial 可以继续使用备用起点补足，但所有失败 trial 必须作为实验记录保留下来。
+
+---
+
+# 二十二、起点配对原则
+
+当前 Mini Warehouse 已经生成 10 个可用候选起点。
+
+正式实验优先使用前 5 个主起点，后 5 个作为失败后的备用起点。
+
+配对原则：
+
+```text
+AIMAPP candidate i
+SCA    candidate i
+```
+
+使用完全相同的 `x / y / yaw`，从而尽可能消除起点差异对算法对比的影响。
+
+---
+
+# 二十三、正式实验应严格记录的数据
+
+## 23.1 实验身份信息
+
+- world；
+- method；
+- run ID；
+- candidate ID；
+- start x；
+- start y；
+- start yaw；
+- robot model；
+- motion backend；
+- action limit；
+- started time；
+- finished time；
+- elapsed time。
+
+## 23.2 代码可复现信息
+
+保存：
+
+- AIMAPP-Reproduction Git commit；
+- AIMAPP runtime Git commit；
+- SCA-AIFNav Git commit；
+- branch；
+- `git status --short`；
+- working-tree diff；
+- source fingerprint。
+
+## 23.3 ROS / Gazebo / Nav2 原始日志
+
+包括：
+
+- Gazebo server log；
+- robot spawn log；
+- Nav2 log；
+- AIMAPP/SCA agent log；
+- recorder log；
+- experiment status。
+
+## 23.4 ROS bag
+
+公共 recorder 当前覆盖的关键话题包括：
+
+```text
+/clock
+/odom
+/agent/odom
+/cmd_vel
+/tf
+/tf_static
+/initialpose
+/amcl_pose
+/map
+/plan
+/visitable_nodes
+/node_connections
+/sca_aifnav/...
+/experiment/...
+/navigate_to_pose/_action/feedback
+/navigate_to_pose/_action/status
+```
+
+并保留动态 topic discovery。
+
+## 23.5 Coverage 数据
+
+正式实验应同时保存外部 Coverage Monitor 输出：
+
+- `coverage.csv`；
+- `coverage_metadata.json`；
+- `coverage_summary.json`；
+- `coverage_grid.npz`；
+- 最终 coverage map PNG；
+- 必要时保存探索过程视频。
+
+正式 canonical metric：
+
+```text
+known_area_m2 = ever-observed LiDAR area
+```
+
+## 23.6 距离数据
+
+保留：
+
+- 原始 `/odom`；
+- `/agent/odom`；
+- 外部 monitor 累计距离；
+- AIMAPP DataSaver 自身距离（若可用）。
+
+后续可以交叉检查 AIMAPP 原生记录与统一外部 evaluator 是否一致。
+
+---
+
+# 二十四、后续统一统计指标
+
+两张地图的正式数据全部完成后，再统一计算和绘图。
+
+## 24.1 Coverage vs Distance
+
+```text
+x = travelled distance (m)
+y = covered / known area (m²)
+```
+
+## 24.2 Coverage Efficiency（CE）
+
+按论文定义：
+
+```text
+CE = covered area / travelled distance
+```
+
+## 24.3 nAUC
+
+计算 coverage-distance 曲线的 normalized AUC。
+
+## 24.4 总行驶距离
+
+比较 200 action 后 AIMAPP 与 SCA baseline 在相同环境和起点上的总运动距离。
+
+## 24.5 最终覆盖面积
+
+比较：
+
+```text
+final known_area_m2
+```
+
+不要求两者逐次完全相同，而关注多次实验后的均值、标准差和总体分布。
+
+## 24.6 成功率与失败类型
+
+统计：
+
+- 200-action 完成率；
+- panorama failure；
+- Nav2 failure；
+- process failure；
+- timeout；
+- 其他失败。
+
+---
+
+# 二十五、为什么不要求 AIMAPP 与 SCA 轨迹逐点完全一致
+
+即使两套算法逻辑一致，也不应期待：
+
+```text
+trajectory_AIMAPP == trajectory_SCA
+```
+
+原因包括：
+
+- Gazebo 物理仿真微小随机性；
+- LiDAR / camera 输入时序；
+- ROS2 callback 调度顺序；
+- Nav2 local planner 行为；
+- MCTS 随机采样；
+- panorama 图像获取时刻；
+- 数值计算微小误差。
+
+因此一致性验证关注：
+
+> **算法行为和统计结果是否处于相同分布/数量级，而不是每个时间点完全重合。**
+
+---
+
+# 二十六、当前 Formal Runner 状态
+
+Mini Warehouse 已经具有 `run_formal_paired_batch.sh`。
+
+该 runner 已实现：
+
+- AIMAPP / SCA paired execution；
+- 相同起点；
+- AIMAPP 200 iteration 完成判定；
+- SCA `EXPERIMENT_ACTION_LIMIT=200`；
+- 每个 run 独立输出目录；
+- source snapshot；
+- source fingerprint；
+- run timeout；
+- success/failure classification；
+- failure retention；
+- 备用起点继续补足 5 个 paired successes。
+
+当前默认：
+
+```text
+TARGET_PAIRS = 5
+RUN_TIMEOUT_SEC = 14400
+```
+
+其中单次 4 小时只是安全上限，不作为论文实验评价指标。
+
+---
+
+# 二十七、正式运行前仍需补齐的一项内容
+
+虽然 common recorder 的 regex 已允许：
+
+```text
+/experiment/.*
+```
+
+但当前 formal runner 本身还没有自动启动最新的 Coverage Monitor。
+
+因此正式 200-action batch 前，应先把经过验证的 ever-observed Coverage Monitor 作为**完全独立的实验测量进程**接入 formal runner。
+
+要求：
+
+1. AIMAPP 和 SCA 使用完全相同 monitor；
+2. monitor 在 A5 前启动；
+3. monitor 不向算法发布任何决策输入；
+4. run 结束后优先安全关闭并写出 summary/NPZ；
+5. monitor failure 不应静默丢失；
+6. 每个 run 使用独立输出目录；
+7. coverage evaluator 版本/fingerprint 写入 metadata。
+
+这一项应在真正启动 20 个 formal trials 前完成一次 smoke 验证。
+
+---
+
+# 二十八、当前不继续推进的方向
+
+## 28.1 暂停继续优化 95% coverage saturation threshold
+
+当前：
+
+```text
+C_max ≈ 28.49 m²
+95% ≈ 27.07 m²
+```
+
+继续做 reference repeatability / clearance sensitivity / probe-step sensitivity 可以进一步提高严谨性，但现阶段收益低于先获取真实大样本 baseline 数据。
+
+因此暂时停止。
+
+## 28.2 不使用 coverage saturation 作为 formal stopping rule
+
+formal baseline 统一固定：
+
+```text
+200 high-level actions
+```
+
+以后若需要研究 coverage-based stopping，再作为独立补充实验处理。
+
+---
+
+# 二十九、当前两个项目的状态
+
+## 29.1 SCA-AIFNav
+
+状态：
+
+- posterior numerical semantics 已与 AIMAPP 对齐；
+- 3-action nonzero smoke 通过；
+- action-limit 机制通过；
+- 最新相关 commit：
+
+```text
+3337697 fix: match AIMAPP log-space state inference
+```
+
+当前可作为 baseline formal experiment 的候选版本。
+
+## 29.2 AIMAPP-Reproduction
+
+当前已形成：
+
+- Mini Warehouse 启动脚本；
+- 非零起点验证；
+- 起点生成器；
+- common recorder；
+- paired formal batch runner；
+- Coverage Monitor；
+- Coverage Visualizer；
+- Reference Coverage Probe；
+- formal experiment 目录结构。
+
+今日新增/继续完善的 coverage/reference 文件在完成最终 formal-runner 接入前仍属于实验工具开发阶段。
+
+---
+
+# 三十、下一阶段执行计划
+
+## 阶段 A：冻结正式实验版本
+
+正式实验前完成：
+
+1. 审核 AIMAPP runtime 当前 working tree；
+2. 确保 SCA baseline 固定在已验证版本；
+3. 将 Coverage Monitor 接入 formal runner；
+4. 保存 evaluator fingerprint；
+5. 再做一次 AIMAPP/SCA 极短 formal smoke；
+6. 确保所有日志、rosbag、coverage 输出均正常收尾。
+
+## 阶段 B：Mini Warehouse 正式实验
+
+执行：
+
+```text
+AIMAPP + Nav2         × 5 successful runs × 200 actions
+SCA Baseline + Nav2   × 5 successful runs × 200 actions
+```
+
+形成至少 10 个成功 run，并保留所有失败 run。
+
+## 阶段 C：第二环境验证
+
+对：
+
+```text
+aws_robomaker_warehouse_smaller
+```
+
+完成：
+
+- world 启动；
+- robot spawn；
+- Nav2 map/config；
+- 起点生成；
+- nonzero alignment；
+- AIMAPP smoke；
+- SCA smoke；
+- common recorder；
+- Coverage Monitor。
+
+## 阶段 D：第二环境正式实验
+
+执行：
+
+```text
+AIMAPP + Nav2         × 5 successful runs × 200 actions
+SCA Baseline + Nav2   × 5 successful runs × 200 actions
+```
+
+## 阶段 E：统一结果分析
+
+两环境全部完成后统一处理：
+
+- coverage-distance curves；
+- CE；
+- nAUC；
+- total distance；
+- final coverage；
+- completion rate；
+- failure distribution；
+- mean / standard deviation；
+- AIMAPP vs SCA baseline paired comparison。
+
+之后再形成一次完整阶段汇报。
+
+---
+
+# 三十一、今日阶段性结论
+
+今天最重要的成果不是得到一个新的导航结果，而是把正式实验前最关键的几个隐患基本暴露并解决：
+
+1. **修复了 SCA-AIFNav 后验推断与 AIMAPP 的数值语义差异；**
+2. **确认修复后 SCA 可以在真实 ROS2/Gazebo/Nav2 链路中继续运行；**
+3. **建立了更可靠的独立 coverage 测量链；**
+4. **把 coverage 与 occupancy confidence 解耦，使覆盖率定义更接近 AIMAPP 官方统计方式；**
+5. **完成了真实 LiDAR 位姿和连通区域约束下的 Reference Evaluator；**
+6. **明确停止继续过度优化 C_max/95% 阈值；**
+7. **正式确定下一阶段采用固定 200-action 协议的大规模 paired baseline experiment。**
+
+当前项目已经从“单点功能复现与问题排查”逐渐进入：
+
+> **可重复、可记录、可比较的正式实验阶段。**
+
+下一步工作的优先级非常明确：
+
+> **先把 AIMAPP 与 SCA-AIFNav 在两个环境中的 20 组成功 200-action 数据完整跑出来，再统一评价基线一致性，最后进入结构复杂度自适应等创新部分。**

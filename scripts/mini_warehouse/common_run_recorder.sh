@@ -47,6 +47,16 @@ START_X="${START_X:-0.0}"
 START_Y="${START_Y:-0.0}"
 START_YAW="${START_YAW:-0.0}"
 
+COVERAGE_SEMANTICS="${COVERAGE_SEMANTICS:-ever_observed_lidar_cells}"
+COVERAGE_RESOLUTION_M="${COVERAGE_RESOLUTION_M:-0.05}"
+COVERAGE_MAP_SIZE_M="${COVERAGE_MAP_SIZE_M:-40.0}"
+COVERAGE_MAX_RAY_RANGE_M="${COVERAGE_MAX_RAY_RANGE_M:-12.0}"
+
+export COVERAGE_SEMANTICS
+export COVERAGE_RESOLUTION_M
+export COVERAGE_MAP_SIZE_M
+export COVERAGE_MAX_RAY_RANGE_M
+
 if [[ "$MODE" == "--check" ]]; then
     RESULT_ROOT="$PROJECT_ROOT/results/mini_warehouse/smoke"
 else
@@ -66,7 +76,7 @@ mkdir -p "$RUN_DIR"
 # and will still be recorded.
 # ----------------------------------------------------------------------
 
-TOPIC_REGEX='^/(clock|odom|agent/odom|cmd_vel|tf|tf_static|initialpose|amcl_pose|map|plan|visitable_nodes|node_connections|sca_aifnav/.*|experiment/.*|navigate_to_pose/_action/(feedback|status))$'
+TOPIC_REGEX='^/(clock|odom|agent/odom|scan|cmd_vel|tf|tf_static|initialpose|amcl_pose|map|plan|visitable_nodes|node_connections|sca_aifnav/.*|experiment/.*|navigate_to_pose/_action/(feedback|status))$'
 
 echo "============================================================"
 echo "Mini Warehouse Common Recorder"
@@ -90,7 +100,7 @@ git_sha_or_unknown()
     fi
 }
 
-AIMAPP_REPRO_COMMIT="$(
+EXPERIMENT_HARNESS_COMMIT="$(
     git_sha_or_unknown \
     "$PROJECT_ROOT/experiments"
 )"
@@ -112,7 +122,7 @@ export TOPIC_REGEX
 export START_X
 export START_Y
 export START_YAW
-export AIMAPP_REPRO_COMMIT
+export EXPERIMENT_HARNESS_COMMIT
 export AIMAPP_RUNTIME_COMMIT
 export SCA_COMMIT
 
@@ -125,7 +135,7 @@ from pathlib import Path
 run_dir = Path(os.environ["RUN_DIR"])
 
 metadata = {
-    "schema_version": 2,
+    "schema_version": 3,
     "method": os.environ["METHOD"],
     "run_name": os.environ["RUN_NAME"],
     "world": "mini_warehouse",
@@ -137,6 +147,12 @@ metadata = {
         "yaw_rad": float(os.environ["START_YAW"]),
     },
     "baseline_influence_radius_m": 0.5,
+    "coverage_evaluation": {
+        "semantics": os.environ["COVERAGE_SEMANTICS"],
+        "resolution_m": float(os.environ["COVERAGE_RESOLUTION_M"]),
+        "map_size_m": float(os.environ["COVERAGE_MAP_SIZE_M"]),
+        "max_ray_range_m": float(os.environ["COVERAGE_MAX_RAY_RANGE_M"]),
+    },
     "started_at_utc": datetime.now(
         timezone.utc
     ).isoformat(),
@@ -144,8 +160,8 @@ metadata = {
         os.environ["TOPIC_REGEX"]
     ),
     "git": {
-        "aimapp_reproduction": (
-            os.environ["AIMAPP_REPRO_COMMIT"]
+        "experiment_harness": (
+            os.environ["EXPERIMENT_HARNESS_COMMIT"]
         ),
         "aimapp_runtime": (
             os.environ["AIMAPP_RUNTIME_COMMIT"]

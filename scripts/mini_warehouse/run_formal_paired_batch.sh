@@ -3,18 +3,28 @@
 set -eo pipefail
 
 ROOT="$HOME/SCA-AIFNav-Project"
-REPRO="$ROOT/experiments"
+HARNESS="$ROOT/experiments"
 AIMAPP_RUNTIME="$ROOT/aimapp/runtime_ws/src/aimapp"
 SCA="$ROOT/sca_aifnav/runtime_ws/src/sca_aifnav"
 EXP="$ROOT/results/mini_warehouse"
 
-POSES="$REPRO/configs/mini_warehouse/start_poses.csv"
+POSES="$HARNESS/configs/mini_warehouse/start_poses.csv"
 
 TARGET_PAIRS="${TARGET_PAIRS:-5}"
 
 # 200-action smoke timing suggests ~1–2 h/run is plausible.
 # Four hours is a conservative safety ceiling, not an experiment metric.
 RUN_TIMEOUT_SEC="${RUN_TIMEOUT_SEC:-14400}"
+
+COVERAGE_SEMANTICS="${COVERAGE_SEMANTICS:-ever_observed_lidar_cells}"
+COVERAGE_RESOLUTION_M="${COVERAGE_RESOLUTION_M:-0.05}"
+COVERAGE_MAP_SIZE_M="${COVERAGE_MAP_SIZE_M:-40.0}"
+COVERAGE_MAX_RAY_RANGE_M="${COVERAGE_MAX_RAY_RANGE_M:-12.0}"
+
+export COVERAGE_SEMANTICS
+export COVERAGE_RESOLUTION_M
+export COVERAGE_MAP_SIZE_M
+export COVERAGE_MAX_RAY_RANGE_M
 
 MODE="${1:---check}"
 
@@ -33,13 +43,15 @@ source "$ROOT/aimapp/runtime_ws/install/setup.bash"
 source "$ROOT/sca_aifnav/runtime_ws/install/setup.bash"
 set -u
 
-cd "$REPRO"
+cd "$HARNESS"
 
-A1="$REPRO/scripts/mini_warehouse/baseline_A_1_server.sh"
-A3="$REPRO/scripts/mini_warehouse/baseline_A_3_spawn_robot.sh"
-A4="$REPRO/scripts/mini_warehouse/baseline_A_4_nav2.sh"
-A5_AIM="$REPRO/scripts/mini_warehouse/baseline_A_5_agent.sh"
-REC="$REPRO/scripts/mini_warehouse/common_run_recorder.sh"
+A1="$HARNESS/scripts/mini_warehouse/baseline_A_1_server.sh"
+A3="$HARNESS/scripts/mini_warehouse/baseline_A_3_spawn_robot.sh"
+A4="$HARNESS/scripts/mini_warehouse/baseline_A_4_nav2.sh"
+A5_AIM="$HARNESS/scripts/mini_warehouse/baseline_A_5_agent.sh"
+REC="$HARNESS/scripts/mini_warehouse/common_run_recorder.sh"
+COV="$HARNESS/scripts/mini_warehouse/run_coverage_monitor.sh"
+COV_PY="$HARNESS/scripts/mini_warehouse/coverage_monitor.py"
 A5_SCA="$SCA/scripts/mini_warehouse/baseline_A_5_sca.sh"
 
 BATCH_ID="${BATCH_ID:-$(date +%Y%m%d_%H%M%S)}"
@@ -50,6 +62,7 @@ A3_PID=""
 A4_PID=""
 A5_PID=""
 REC_PID=""
+COV_PID=""
 
 CURRENT_METHOD=""
 CURRENT_RUN=""
@@ -131,7 +144,11 @@ cleanup_current_run()
 {
     set +e
 
-    # Stop rosbag first so its database is closed cleanly.
+    # Finalize coverage while ROS/TF sources are still alive.
+    stop_group "$COV_PID" 20
+    COV_PID=""
+
+    # Stop rosbag after coverage finalization.
     stop_group "$REC_PID" 20
     REC_PID=""
 
@@ -184,6 +201,7 @@ preflight()
         "$A4" \
         "$A5_AIM" \
         "$REC" \
+        "$COV" \
         "$A5_SCA"
     do
         if [[ ! -f "$f" ]]; then
@@ -196,6 +214,26 @@ preflight()
 
     if [[ ! -f "$POSES" ]]; then
         echo "ERROR: missing $POSES"
+        exit 1
+    fi
+
+    if [[ ! -f "$COV_PY" ]]; then
+        echo "ERROR: missing $COV_PY"
+        exit 1
+    fi
+
+    if ! grep -q "ever_observed_lidar_cells" "$COV_PY"; then
+        echo "ERROR: coverage monitor is not ever-observed."
+        exit 1
+    fi
+
+    if ! grep -q "COVERAGE_MAP_SIZE_M.*40.0" "$COV"; then
+        echo "ERROR: coverage wrapper does not default to 40 m."
+        exit 1
+    fi
+
+    if ! grep -q "agent/odom|scan|cmd_vel" "$REC"; then
+        echo "ERROR: recorder does not preserve raw /scan."
         exit 1
     fi
 
@@ -266,7 +304,7 @@ preflight()
 
     echo
     echo "Source fingerprints:"
-    echo "  reproduction : $(repo_fingerprint "$REPRO")"
+    echo "  experiment_harness: $(repo_fingerprint "$HARNESS")"
     echo "  AIMAPP       : $(repo_fingerprint "$AIMAPP_RUNTIME")"
     echo "  SCA          : $(repo_fingerprint "$SCA")"
 
@@ -325,6 +363,35 @@ wait_for_nav2()
         if ros2 action list 2>/dev/null \
             | grep -qx '/navigate_to_pose'
         then
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    return 1
+}
+
+
+wait_for_coverage_monitor()
+{
+    local output_dir="$1"
+
+    for _ in $(seq 1 30)
+    do
+        if [[ -n "$COV_PID" ]] && ! kill -0 "$COV_PID" 2>/dev/null; then
+            return 1
+        fi
+
+        local topic_ready=0
+        local metadata_ready=0
+
+        ros2 topic list 2>/dev/null | grep -qx '/experiment/coverage_stats' \
+            && topic_ready=1 || true
+        [[ -f "$output_dir/coverage_metadata.json" ]] \
+            && metadata_ready=1 || true
+
+        if [[ "$topic_ready" -eq 1 && "$metadata_ready" -eq 1 ]]; then
             return 0
         fi
 
@@ -400,8 +467,8 @@ run_one()
     cp "$POSES" "$CURRENT_RUN_DIR/start_poses.csv"
 
     snapshot_repo \
-        "$REPRO" \
-        "aimapp_reproduction" \
+        "$HARNESS" \
+        "experiment_harness" \
         "$CURRENT_RUN_DIR"
 
     snapshot_repo \
@@ -415,8 +482,8 @@ run_one()
         "$CURRENT_RUN_DIR"
 
     # Ensure source state did not change after batch start.
-    if [[ "$(repo_fingerprint "$REPRO")" != "$FP_REPRO" ]]; then
-        echo "ERROR: reproduction source changed during batch."
+    if [[ "$(repo_fingerprint "$HARNESS")" != "$FP_HARNESS" ]]; then
+        echo "ERROR: experiment harness source changed during batch."
         return 1
     fi
 
@@ -498,6 +565,28 @@ run_one()
     fi
 
     # --------------------------------------------------------
+    # Independent coverage monitor
+    # --------------------------------------------------------
+    mkdir -p "$CURRENT_RUN_DIR/coverage"
+
+    COVERAGE_SEMANTICS="$COVERAGE_SEMANTICS" \
+    COVERAGE_RESOLUTION_M="$COVERAGE_RESOLUTION_M" \
+    COVERAGE_MAP_SIZE_M="$COVERAGE_MAP_SIZE_M" \
+    COVERAGE_MAX_RAY_RANGE_M="$COVERAGE_MAX_RAY_RANGE_M" \
+    setsid bash "$COV" "$CURRENT_RUN_DIR/coverage" \
+        > "$CURRENT_RUN_DIR/logs/coverage_monitor.log" \
+        2>&1 &
+
+    COV_PID=$!
+
+    if ! wait_for_coverage_monitor "$CURRENT_RUN_DIR/coverage"; then
+        echo "ERROR: coverage monitor failed readiness check."
+        cat "$CURRENT_RUN_DIR/logs/coverage_monitor.log" || true
+        cleanup_current_run
+        return 1
+    fi
+
+    # --------------------------------------------------------
     # Common rosbag recorder
     # --------------------------------------------------------
     START_X="$sx" \
@@ -555,6 +644,7 @@ run_one()
     local next_report
     local success=0
     local reason="unknown"
+    local measurement_status="running"
 
     started="$(date +%s)"
     next_report=60
@@ -563,6 +653,13 @@ run_one()
     do
         now="$(date +%s)"
         elapsed=$((now - started))
+
+        if [[ -n "$COV_PID" ]] && ! kill -0 "$COV_PID" 2>/dev/null; then
+            success=0
+            reason="coverage_monitor_exited"
+            measurement_status="failed"
+            break
+        fi
 
         if [[ "$method" == "aimapp_nav2" ]]; then
 
@@ -642,11 +739,44 @@ run_one()
         sleep 10
     done
 
-    # Preserve final messages before closing the recorder.
+    # Preserve final messages before finalizing measurement.
     sleep 3
+
+    stop_group "$COV_PID" 20
+    COV_PID=""
+
+    REQUIRED_COVERAGE_FILES=(
+        "$CURRENT_RUN_DIR/coverage/coverage.csv"
+        "$CURRENT_RUN_DIR/coverage/coverage_metadata.json"
+        "$CURRENT_RUN_DIR/coverage/coverage_summary.json"
+        "$CURRENT_RUN_DIR/coverage/coverage_grid.npz"
+        "$CURRENT_RUN_DIR/coverage/coverage_map.png"
+    )
+
+    measurement_status="complete"
+
+    for coverage_file in "${REQUIRED_COVERAGE_FILES[@]}"
+    do
+        if [[ ! -s "$coverage_file" ]]; then
+            echo "ERROR: missing/empty coverage output: $coverage_file"
+            measurement_status="incomplete"
+        fi
+    done
+
+    if [[ "$measurement_status" != "complete" ]]; then
+        success=0
+        if [[ "$reason" == "completed_200_actions" ]]; then
+            reason="coverage_output_incomplete"
+        fi
+    fi
 
     stop_group "$REC_PID" 20
     REC_PID=""
+
+    if [[ -d "$CURRENT_RUN_DIR/rosbag" ]]; then
+        ros2 bag info "$CURRENT_RUN_DIR/rosbag" \
+            > "$CURRENT_RUN_DIR/rosbag_info.txt" 2>&1 || true
+    fi
 
     stop_group "$A5_PID" 8
     A5_PID=""
@@ -675,6 +805,7 @@ status=$(
     fi
 )
 reason=$reason
+measurement_status=$measurement_status
 method=$method
 candidate=$candidate
 start_x=$sx
@@ -718,12 +849,12 @@ mkdir -p "$BATCH_DIR"
 
 cp "$POSES" "$BATCH_DIR/start_poses.csv"
 
-FP_REPRO="$(repo_fingerprint "$REPRO")"
+FP_HARNESS="$(repo_fingerprint "$HARNESS")"
 FP_AIMAPP="$(repo_fingerprint "$AIMAPP_RUNTIME")"
 FP_SCA="$(repo_fingerprint "$SCA")"
 
 cat > "$BATCH_DIR/source_fingerprints.txt" <<TXT
-aimapp_reproduction=$FP_REPRO
+experiment_harness=$FP_HARNESS
 aimapp_runtime=$FP_AIMAPP
 sca_aifnav=$FP_SCA
 TXT

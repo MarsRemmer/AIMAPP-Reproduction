@@ -434,7 +434,7 @@ potential_reclaimable_space=2.53 GB
 @@ -1,661 +1,610 @@
 -<?xml version="1.0" ?>
 -<sdf version="1.5">
--  <model name="turtlebot3_waffle_pi_plus">  
+-  <model name="turtlebot3_waffle_pi_plus">
 -  <pose>0.0 0.0 0.0 0.0 0.0 0.0</pose>
 -
 -    <link name="base_footprint"/>

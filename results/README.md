@@ -1,31 +1,33 @@
 # Experiment Results
 
-## raw/
+This directory is no longer used for new experiment output.
 
-`raw/` stores complete local AIMAPP runtime snapshots and is intentionally excluded from Git because the generated models and per-step artifacts can be very large.
+All project-level experiment data is stored under:
 
-Current local snapshot:
+`~/SCA-AIFNav-Project/experiments/`
 
-- `2026-09-10_aimapp_runtime_snapshot/`
-- Contains runs `0/` and `1/`.
-- Complete snapshot size: approximately 2.7 GB.
-- Includes `steps_data.csv`, model snapshots, observations, likelihood plots and other per-step runtime artifacts.
-- Runs `0` and `1` are not yet assigned PF/Nav2 labels because their correspondence has not been independently verified.
+Current convention:
 
-Processed quantitative results intended for version control should later be placed in `results/processed/`.
+- `experiments/mini_warehouse/smoke/`
+  - integration checks and recorder preflight runs
 
-## Preserved pre-consolidation run
+- `experiments/mini_warehouse/formal/aimapp_nav2/`
+  - formal AIMAPP + Nav2 baseline runs
 
-`raw/2026-09-11_archive_old_ws_run0/`
+- `experiments/mini_warehouse/formal/sca_baseline_nav2/`
+  - formal SCA-AIFNav baseline + Nav2 runs
 
-This directory preserves an independent AIMAPP run recovered from the former
-`aimapp_reproduction_ws_old/src/aimapp/tests/0` workspace before deletion of
-that legacy workspace.
+- `experiments/mini_warehouse/processed/`
+  - processed tables and cross-run statistics
 
-It is not the same run as
-`2026-09-10_aimapp_runtime_snapshot/0`: file counts, step directories and
-model/output contents differ. The run is therefore retained separately rather
-than merged or overwritten.
+- `experiments/mini_warehouse/figures/`
+  - final comparison figures
 
-As with other raw experiment data, this directory is intentionally excluded
-from Git because of its large size.
+- `experiments/archive/`
+  - historical runs retained for provenance
+
+Historical raw AIMAPP datasets formerly stored in `results/raw/`
+were migrated to the project-level `experiments/archive/` directory
+on 2026-09-11 and verified using SHA256 manifests.
+
+Do not place new raw or formal experiment data in this repository.

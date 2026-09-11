@@ -35,7 +35,12 @@ fi
 
 PROJECT_ROOT="$HOME/SCA-AIFNav-Project"
 
-RESULT_ROOT="$PROJECT_ROOT/aimapp/reproduction/results/mini_warehouse"
+if [[ "$MODE" == "--check" ]]; then
+    RESULT_ROOT="$PROJECT_ROOT/experiments/mini_warehouse/smoke"
+else
+    RESULT_ROOT="$PROJECT_ROOT/experiments/mini_warehouse/formal"
+fi
+
 RUN_DIR="$RESULT_ROOT/$METHOD/$RUN_NAME"
 
 mkdir -p "$RUN_DIR"

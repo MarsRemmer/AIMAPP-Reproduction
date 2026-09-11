@@ -1,3 +1,4 @@
-
-# Local raw experiment data
+# Legacy/local experiment output.
+# New experiments belong in ~/SCA-AIFNav-Project/experiments/
 results/raw/
+results/mini_warehouse/

@@ -219,6 +219,9 @@ echo "============================================================"
 echo "5. START A4 - NAV2"
 echo "============================================================"
 
+START_X="$START_X" \
+START_Y="$START_Y" \
+START_YAW="$START_YAW" \
 setsid bash \
     scripts/mini_warehouse/baseline_A_4_nav2.sh \
     > "$SMOKE/logs/A4_nav2.log" \

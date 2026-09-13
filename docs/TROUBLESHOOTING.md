@@ -351,3 +351,473 @@ A5 不再修改 AIMAPP source mode
 ```
 
 在该问题验证完成前，不启动正式长批次实验。
+
+---
+
+## 14. ROS 环境已经 source，但 pytest 仍提示找不到 rclpy / geometry_msgs
+
+### 现象
+
+执行：
+
+```bash
+source /opt/ros/humble/setup.bash
+```
+
+后，单独运行 Python 可以正常导入：
+
+```text
+rclpy
+geometry_msgs
+nav_msgs
+sensor_msgs
+cv_bridge
+```
+
+但随后执行 pytest 时仍出现：
+
+```text
+ModuleNotFoundError: No module named 'rclpy'
+ModuleNotFoundError: No module named 'geometry_msgs'
+...
+```
+
+### 根因
+
+测试命令中使用了：
+
+```bash
+PYTHONPATH="$PWD/sca_aifnav_core:$PWD/sca_aifnav_ros"
+```
+
+这会覆盖 ROS 已经注入的 `PYTHONPATH`，导致 `/opt/ros/humble/...` 等路径丢失。
+
+### 固定处理
+
+运行 ROS 测试时必须保留原有 `PYTHONPATH`：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 \
+PYTHONPATH="$PWD/sca_aifnav_core:$PWD/sca_aifnav_ros${PYTHONPATH:+:$PYTHONPATH}" \
+python3 -m pytest \
+  sca_aifnav_ros/test \
+  -q
+```
+
+### 结论
+
+如果“单独 import ROS 包成功、pytest 却全部找不到 ROS 包”，优先检查 `PYTHONPATH` 是否被测试命令覆盖，不要误判为 ROS 安装损坏。
+
+---
+
+## 15. 追加测试后出现 flake8 E303，通常只是空行数量问题
+
+### 现象
+
+功能测试全部通过，但 `test_flake8` 单独失败：
+
+```text
+E303 too many blank lines (3)
+```
+
+### 根因
+
+通过脚本向测试文件尾部追加新测试时，原文件末尾已有换行，再额外拼接多个 `\n`，容易在新函数前形成 3 个空行。
+
+### 固定处理
+
+只删除多余的一行，不修改测试逻辑。
+
+新增测试时优先保证顶层函数之间只有 PEP8 允许的空行数量。
+
+### 结论
+
+`E303` 属于格式错误，不代表算法或测试逻辑失败。先按错误行定位并最小修改，不要因为 lint 失败重构功能代码。
+
+---
+
+## 16. git diff --check 提示 new blank line at EOF
+
+### 现象
+
+测试全部通过，但：
+
+```bash
+git diff --check
+```
+
+提示：
+
+```text
+new blank line at EOF
+```
+
+### 根因
+
+自动追加文本时文件末尾留下了多个换行。
+
+### 固定处理
+
+统一将文件结尾规范为“恰好一个换行符”：
+
+```python
+text = path.read_text(encoding="utf-8")
+path.write_text(
+    text.rstrip("\n") + "\n",
+    encoding="utf-8",
+)
+```
+
+### 结论
+
+正式 commit 前固定执行：
+
+```bash
+git diff --check
+```
+
+必须无输出后再提交。
+
+---
+
+## 17. git diff --stat 默认不会统计 untracked 新文件
+
+### 现象
+
+新增：
+
+```text
+navigation_mode.py
+```
+
+后，`git status` 能看到：
+
+```text
+?? sca_aifnav_core/sca_aifnav_core/navigation_mode.py
+```
+
+但普通：
+
+```bash
+git diff --stat
+```
+
+没有显示这个文件。
+
+### 根因
+
+`git diff` 默认只比较已跟踪文件的工作区变化，不包含尚未 `git add` 的 untracked 文件。
+
+### 固定处理
+
+审计变更时不要只看 `git diff --stat`，必须同时检查：
+
+```bash
+git status --short
+git diff --stat
+```
+
+提交前再通过 `git add` 将新文件纳入 staged diff。
+
+---
+
+## 18. 导航模式切换不能把旧 executed_action_id 带入“纯重规划” decision
+
+### 现象
+
+运行时从探索模式切换到目标模式，或从目标模式切回探索模式时，会基于当前状态重新执行 MCTS。
+
+早期实现中 `_replan_after_mode_change()` 创建新 `NavigationCoreDecision` 时曾复制：
+
+```text
+previous_decision.executed_action_id
+```
+
+### 风险
+
+模式切换本身没有执行新物理动作，也没有形成新的“动作 -> 观测 -> 学习”周期。
+
+如果继续携带旧的 `executed_action_id`，实验计数逻辑可能把之前已经完成并计数的动作再次视为新完成动作，造成重复计数。
+
+### 固定处理
+
+纯模式切换 / 纯重规划产生的新 decision 必须：
+
+```text
+executed_action_id = None
+```
+
+同时：
+
+```text
+_cycle_count
+```
+
+不得因为模式切换而增加。
+
+### 结论
+
+必须严格区分：
+
+```text
+真实物理动作完成后的 decision
+```
+
+与：
+
+```text
+仅因偏好/模式变化产生的 replanning decision
+```
+
+后者绝不能伪装成新的执行经验。
+
+---
+
+## 19. NavigationNode 与 NavigationCoreBridge 的 decision 缓存必须同步
+
+### 现象
+
+`NavigationCoreBridge` 内部维护：
+
+```text
+_latest_decision
+```
+
+`NavigationNode` 同时也维护：
+
+```text
+_latest_navigation_decision
+```
+
+如果只在 Bridge 中切换模式并重新规划，而 Node 没同步更新，两个层级会对“当前决策”产生不同认识。
+
+### 风险
+
+可能出现：
+
+```text
+Bridge.next_action_id = 新模式下的新动作
+Node.latest_navigation_decision = 旧模式下的旧 decision
+```
+
+导致后续执行、日志或生命周期判断使用不同版本的计划。
+
+### 固定处理
+
+运行时模式切换必须通过 Node 层接口统一调用：
+
+```text
+set_exploration_navigation(...)
+set_goal_navigation(...)
+```
+
+Bridge 完成重新规划后，Node 必须同步替换自己的：
+
+```text
+_latest_navigation_decision
+```
+
+### 结论
+
+Bridge 负责核心状态与规划，Node 负责 ROS 生命周期，但两者暴露的“当前 decision”必须始终一致。
+
+---
+
+## 20. 物理动作执行期间或已完成动作等待观测期间禁止切换导航模式
+
+### 原因
+
+模式切换会替换当前偏好和下一步规划。
+
+如果机器人仍在执行旧计划对应的物理动作，此时切换模式会造成：
+
+```text
+物理执行 = 旧动作
+内部计划 = 新模式下的新动作
+```
+
+两者失配。
+
+同样，如果一个物理动作已经完成，但其结果观测尚未进入模型学习，此时切换模式会打断完整的：
+
+```text
+action -> observation -> learning
+```
+
+闭环。
+
+### 固定处理
+
+以下两种状态均禁止切换模式：
+
+```text
+navigation_action_active == True
+```
+
+以及：
+
+```text
+_completed_action_id is not None
+```
+
+必须先完成当前动作对应的观测与学习，再允许改变模式。
+
+---
+
+## 21. 目标到达后不要自动切回 EXPLORE
+
+### 设计结论
+
+当前目标模式包括：
+
+```text
+GOAL_DIRECT
+GOAL_BALANCED
+```
+
+目标到达后应：
+
+```text
+正常完成当前观测学习
+-> goal_reached = True
+-> next_action_id = None
+-> 停止当前自动导航任务
+-> 保持当前 GOAL 模式
+-> 保持目标偏好
+-> 等待新的明确任务指令
+```
+
+不要自动执行：
+
+```text
+GOAL -> EXPLORE
+```
+
+### 原因
+
+“目标已完成”和“用户要求重新探索”是两个不同事件。
+
+自动切换会隐式改变任务语义，也会使实验状态难以解释。
+
+---
+
+## 22. GOAL_DIRECT 只有评价项配置与 AIMAPP 原始目标模式等价
+
+### AIMAPP 原始目标模式
+
+AIMAPP 目标模式的主要评价项配置为：
+
+```text
+use_utility = True
+use_states_info_gain = False
+use_inductive_inference = True
+```
+
+SCA-AIFNav 中对应：
+
+```text
+GOAL_DIRECT
+```
+
+### 必须明确的边界
+
+以下内容属于 SCA-AIFNav 工程扩展，不应写成 AIMAPP 原样复现：
+
+```text
+GOAL_BALANCED
+place goal 接口
+运行时模式切换
+目标到达后的停止/等待生命周期
+Node-Bridge decision cache 同步
+```
+
+其中 `GOAL_BALANCED` 为：
+
+```text
+utility = True
+state information gain = True
+inductive inference = True
+```
+
+用于后续探索-目标平衡比较与消融。
+
+---
+
+## 23. 参数信息增益暂不加入正式模式
+
+### AIMAPP 情况
+
+AIMAPP 实现了基于：
+
+```text
+pA
+pB
+```
+
+的 parameter information gain，但正式探索模式与正式目标模式均设置：
+
+```text
+use_param_info_gain = False
+```
+
+其 MCTS 实现中还对该项额外进行：
+
+```text
+/ 100
+```
+
+尺度压缩，并留有其与其他项联合使用效果不佳的源码注释。
+
+### 当前固定结论
+
+现阶段 SCA-AIFNav 三种模式均不启用参数信息增益。
+
+当前只稳定使用：
+
+```text
+State Information Gain
+Expected Utility
+Inductive Inference
+```
+
+Parameter Information Gain 后续作为独立 AIMAPP 等价性审计项处理，完成准确复现后再决定是否加入实验消融。
+
+不要为了“评价项更完整”而直接把它打开，否则会改变当前已冻结的探索与目标导航基线。
+
+---
+
+## 24. 2026-09-13 导航模式最终固定定义
+
+当前三种模式统一定义为：
+
+### EXPLORE
+
+```text
+use_utility = False
+use_state_information_gain = True
+use_inductive_inference = False
+```
+
+用途：AIMAPP 对齐的纯探索模式。
+
+### GOAL_DIRECT
+
+```text
+use_utility = True
+use_state_information_gain = False
+use_inductive_inference = True
+```
+
+用途：AIMAPP 对齐的直接目标导航基线。
+
+### GOAL_BALANCED
+
+```text
+use_utility = True
+use_state_information_gain = True
+use_inductive_inference = True
+```
+
+用途：SCA-AIFNav 扩展的目标-信息平衡模式。
+
+不要再通过散落的三个 bool 临时组合运行正式实验，统一通过命名模式配置，避免实验条件失控。

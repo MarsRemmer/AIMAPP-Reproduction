@@ -76,7 +76,7 @@ mkdir -p "$RUN_DIR"
 # and will still be recorded.
 # ----------------------------------------------------------------------
 
-TOPIC_REGEX='^/(clock|odom|agent/odom|scan|cmd_vel|tf|tf_static|initialpose|amcl_pose|map|plan|visitable_nodes|node_connections|sca_aifnav/.*|experiment/.*|navigate_to_pose/_action/(feedback|status))$'
+TOPIC_REGEX='^/(clock|odom|agent/odom|scan|cmd_vel|cmd_vel_nav|tf|tf_static|initialpose|amcl_pose|map|plan|visitable_nodes|node_connections|sca_aifnav/.*|experiment/.*|navigate_to_pose/_action/(feedback|status))$'
 
 echo "============================================================"
 echo "Mini Warehouse Common Recorder"
@@ -209,6 +209,33 @@ if [[ -n "$AIMAPP_PREFIX" ]]; then
         cp \
             "$PARAM_DIR/nav2_humble_params.yaml" \
             "$RUN_DIR/nav2_humble_params.yaml"
+    fi
+fi
+
+
+# ----------------------------------------------------------------------
+# Preserve the SCA odom-only Nav2 configuration as well.
+#
+# AIMAPP and SCA now use different Nav2 execution architectures:
+#
+# AIMAPP:
+#   map frame + static map + AMCL
+#
+# SCA:
+#   odom frame + rolling LiDAR costmaps
+# ----------------------------------------------------------------------
+
+SCA_SIM_PREFIX="$(
+    ros2 pkg prefix sca_aifnav_sim 2>/dev/null || true
+)"
+
+if [[ -n "$SCA_SIM_PREFIX" ]]; then
+    SCA_NAV2_PARAMS="$SCA_SIM_PREFIX/share/sca_aifnav_sim/config/nav2_odom_params.yaml"
+
+    if [[ -f "$SCA_NAV2_PARAMS" ]]; then
+        cp \
+            "$SCA_NAV2_PARAMS" \
+            "$RUN_DIR/sca_nav2_odom_params.yaml"
     fi
 fi
 

@@ -1,0 +1,52 @@
+[INFO] [1789747775.032300098] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.458, y=0.460, action=4
+[INFO] [1789747775.039794868] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789747778.143749836] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789747798.031999620] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.288, y=1.090, action=2
+[INFO] [1789747798.040083519] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789747838.073386514] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789747858.420776482] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.918, y=0.920, action=6
+[INFO] [1789747858.431712657] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789747862.732092469] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789747884.551259267] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-1.378, y=1.380, action=4
+[INFO] [1789747884.563298232] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789747899.132337764] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789747919.744118928] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-1.208, y=2.010, action=2
+[INFO] [1789747919.755130412] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789747937.978294406] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789747959.082740704] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.578, y=2.180, action=0
+[INFO] [1789747959.090233313] [sca_aifnav_navigation]: Nav2 goal accepted
+[WARN] [1789747988.314420557] [sca_aifnav_navigation]: Nav2 goal ended with status 6
+[INFO] [1789747988.327459012] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-1.208, y=2.010, action=0
+[INFO] [1789747988.328141167] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789747991.288606135] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748012.074876701] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.578, y=2.180, action=0
+[INFO] [1789748012.085662889] [sca_aifnav_navigation]: Nav2 goal accepted
+[WARN] [1789748033.316145303] [sca_aifnav_navigation]: Nav2 goal ended with status 6
+[INFO] [1789748033.394994070] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-1.208, y=2.010, action=0
+[INFO] [1789748033.396065696] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789748033.456019549] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748033.865041360] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.748, y=1.550, action=10
+[INFO] [1789748033.876709366] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789748038.279420655] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748059.196336206] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.578, y=2.180, action=2
+[INFO] [1789748059.207282611] [sca_aifnav_navigation]: Nav2 goal accepted
+[WARN] [1789748083.817411397] [sca_aifnav_navigation]: Nav2 goal ended with status 6
+[INFO] [1789748083.858298864] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.748, y=1.550, action=2
+[INFO] [1789748083.859759369] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789748085.719272266] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748086.225384456] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.918, y=0.920, action=8
+[INFO] [1789748086.234211194] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789748094.137389009] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748115.974786630] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.748, y=1.550, action=2
+[INFO] [1789748115.983557293] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789748118.786231018] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748139.630750516] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.578, y=2.180, action=2
+[INFO] [1789748139.639538182] [sca_aifnav_navigation]: Nav2 goal accepted
+[WARN] [1789748166.314263213] [sca_aifnav_navigation]: Nav2 goal ended with status 6
+[INFO] [1789748166.367924679] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.748, y=1.550, action=2
+[INFO] [1789748166.368928011] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789748169.228844775] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748169.774823643] [sca_aifnav_navigation]: Sending Nav2 odom goal x=-0.288, y=1.090, action=10
+[INFO] [1789748169.785802430] [sca_aifnav_navigation]: Nav2 goal accepted
+[INFO] [1789748173.688752474] [sca_aifnav_navigation]: Nav2 goal succeeded
+[INFO] [1789748194.967881231] [sca_aifnav_navigation]: EXPERIMENT_COMPLETE actions=10 limit=10

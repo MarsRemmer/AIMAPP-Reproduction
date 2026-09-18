@@ -1,0 +1,120 @@
+[bt_navigator-5] [INFO] [1789747959.083094934] [bt_navigator]: Begin navigating from current location (-1.19, 1.87) to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747959.083932949] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747959.083968922] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747959.284583968] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747959.284615363] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747962.934323631] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747962.934377983] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747963.284283084] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747963.284320714] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747968.334148367] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747968.334190738] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747968.785226895] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747968.785316955] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747971.784621915] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747971.784665363] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747972.284278942] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747972.284335086] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747975.934149189] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747975.934188816] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747976.284747914] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747976.284844841] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747981.334628831] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747981.334707833] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747981.784547985] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747981.784598762] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747987.934161945] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747987.934214064] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789747988.284706358] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789747988.284749088] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[bt_navigator-5] [ERROR] [1789747988.313352585] [bt_navigator]: Goal failed
+[bt_navigator-5] [INFO] [1789748012.075287251] [bt_navigator]: Begin navigating from current location (-1.26, 1.89) to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748012.076294375] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748012.076336190] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748012.287014788] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748012.287064316] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748012.787063644] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748012.787132516] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748013.286554721] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748013.286604660] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748017.036265642] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748017.036302752] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748017.286776458] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748017.286977327] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748022.336379199] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748022.336415573] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748022.787422825] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748022.787476681] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748023.286736655] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748023.286782338] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748023.786486006] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748023.786528876] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748027.436533488] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748027.436596496] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748027.786639011] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748027.786671021] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748032.836582228] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748032.836672680] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748033.286651726] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748033.286684719] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[bt_navigator-5] [ERROR] [1789748033.315497340] [bt_navigator]: Goal failed
+[bt_navigator-5] [INFO] [1789748059.196663966] [bt_navigator]: Begin navigating from current location (-0.75, 1.69) to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748059.197585565] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748059.197637379] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748059.287921207] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748059.287956686] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748065.437761736] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748065.437803034] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748065.787968270] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748065.788002015] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748066.288223352] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748066.288263551] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748066.787957146] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748066.787998502] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748070.437723866] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748070.437757485] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748070.788329059] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748070.788398343] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748075.837843455] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748075.837881129] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748076.288842112] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748076.288934705] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748082.437812243] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748082.437870383] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748082.787909208] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748082.787944821] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748083.288729479] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748083.288767377] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748083.788152680] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748083.788187772] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[bt_navigator-5] [ERROR] [1789748083.816846137] [bt_navigator]: Goal failed
+[bt_navigator-5] [INFO] [1789748139.631095404] [bt_navigator]: Begin navigating from current location (-0.79, 1.42) to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748139.632024652] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748139.632056448] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748139.782724232] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748139.782783379] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748143.432215006] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748143.432249323] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748143.783012157] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748143.783085328] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748148.832552640] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748148.832593141] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748149.282631670] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748149.282666562] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748155.432600429] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748155.432682650] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748155.782501676] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748155.782541001] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748156.283088656] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748156.283128197] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748156.783008995] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748156.783048390] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748160.432187911] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748160.432247209] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748160.782391647] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748160.782424187] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748165.832294314] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748165.832338395] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[planner_server-3] [WARN] [1789748166.283052892] [planner_server]: GridBased: failed to create plan with tolerance 0.10.
+[planner_server-3] [WARN] [1789748166.283142885] [planner_server]: Planning algorithm GridBased failed to generate a valid path to (-0.58, 2.18)
+[bt_navigator-5] [ERROR] [1789748166.311421766] [bt_navigator]: Goal failed

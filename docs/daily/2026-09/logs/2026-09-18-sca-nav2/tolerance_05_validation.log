@@ -1,0 +1,23 @@
+SOURCE GOAL
+Goal accepted with ID: a4ce0be9263040ba9958d60b2f2893b4
+Result:
+Goal finished with status: SUCCEEDED
+
+PROBLEM TARGET
+Goal accepted with ID: 533cc95098d2444082a3004b72e7b293
+Result:
+Goal finished with status: SUCCEEDED
+
+FINAL ODOM
+x: -0.6834284473640417
+y: 1.8935400808736724
+z: 0.040871526484921684
+---
+
+NAV2 EVENTS
+[bt_navigator-5] [INFO] [1789750172.104538155] [bt_navigator]: Begin navigating from current location (0.00, 0.00) to (-0.75, 1.55)
+[controller_server-1] [INFO] [1789750186.577693645] [controller_server]: Reached the goal!
+[bt_navigator-5] [INFO] [1789750186.624751688] [bt_navigator]: Goal succeeded
+[bt_navigator-5] [INFO] [1789750187.150504271] [bt_navigator]: Begin navigating from current location (-0.65, 1.44) to (-0.58, 2.18)
+[controller_server-1] [INFO] [1789750190.523196378] [controller_server]: Reached the goal!
+[bt_navigator-5] [INFO] [1789750190.560662838] [bt_navigator]: Goal succeeded

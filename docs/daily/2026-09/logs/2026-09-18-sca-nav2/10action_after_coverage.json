@@ -1,0 +1,20 @@
+{
+  "coverage_metric": "known_area_m2",
+  "coverage_semantics": "ever_observed_lidar_cells",
+  "processed_scans": 998,
+  "received_scans": 3012,
+  "distance_m": 7.044953348125388,
+  "free_cells": 8704,
+  "occupied_cells": 1370,
+  "known_cells": 10108,
+  "ever_observed_cells": 10108,
+  "candidate_observed_cells": 34,
+  "free_area_m2": 21.760000000000005,
+  "occupied_area_m2": 3.4250000000000007,
+  "known_area_m2": 25.270000000000007,
+  "occupied_hit_threshold": 2,
+  "unconfirmed_hit_cells": 41,
+  "tf_lookup_failures": 19,
+  "tf_timestamp_mode": "scan_header_stamp",
+  "tf_listener_mode": "dedicated_thread"
+}

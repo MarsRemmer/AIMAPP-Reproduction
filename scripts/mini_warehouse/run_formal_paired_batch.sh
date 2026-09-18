@@ -47,7 +47,8 @@ cd "$HARNESS"
 
 A1="$HARNESS/scripts/mini_warehouse/baseline_A_1_server.sh"
 A3="$HARNESS/scripts/mini_warehouse/baseline_A_3_spawn_robot.sh"
-A4="$HARNESS/scripts/mini_warehouse/baseline_A_4_nav2.sh"
+A4_AIM="$HARNESS/scripts/mini_warehouse/baseline_A_4_nav2.sh"
+A4_SCA="$HARNESS/scripts/mini_warehouse/baseline_S_4_nav2.sh"
 A5_AIM="$HARNESS/scripts/mini_warehouse/baseline_A_5_agent.sh"
 REC="$HARNESS/scripts/mini_warehouse/common_run_recorder.sh"
 COV="$HARNESS/scripts/mini_warehouse/run_coverage_monitor.sh"
@@ -205,7 +206,8 @@ preflight()
     for f in \
         "$A1" \
         "$A3" \
-        "$A4" \
+        "$A4_AIM" \
+        "$A4_SCA" \
         "$A5_AIM" \
         "$REC" \
         "$COV" \
@@ -567,9 +569,24 @@ run_one()
     fi
 
     # --------------------------------------------------------
-    # A4
+    # A4 / S4 - method-specific Nav2 backend
     # --------------------------------------------------------
-    setsid bash "$A4" \
+    if [[ "$method" == "aimapp_nav2" ]]; then
+        A4_RUN="$A4_AIM"
+    elif [[ "$method" == "sca_baseline_nav2" ]]; then
+        A4_RUN="$A4_SCA"
+    else
+        echo "ERROR: unknown method $method"
+        cleanup_current_run
+        return 1
+    fi
+
+    echo "Nav2 launcher: $A4_RUN"
+
+    START_X="$sx" \
+    START_Y="$sy" \
+    START_YAW="$yaw" \
+    setsid bash "$A4_RUN" \
         > "$CURRENT_RUN_DIR/logs/A4_nav2.log" \
         2>&1 &
 

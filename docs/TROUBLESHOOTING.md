@@ -743,7 +743,7 @@ inductive inference = True
 
 ---
 
-## 23. 参数信息增益暂不加入正式模式
+## 23. 参数信息增益已完成 AIMAPP 等价复现，但正式模式仍保持关闭
 
 ### AIMAPP 情况
 
@@ -766,23 +766,29 @@ use_param_info_gain = False
 / 100
 ```
 
-尺度压缩，并留有其与其他项联合使用效果不佳的源码注释。
+尺度压缩，并按 AIMAPP 原始符号方向参与评价。
+
+### 当前实现状态
+
+SCA-AIFNav 已完成该分支的等价复现。
+
+对应 commit：
+
+```text
+6ffc11a feat: reproduce AIMAPP parameter information gain
+```
 
 ### 当前固定结论
 
-现阶段 SCA-AIFNav 三种模式均不启用参数信息增益。
-
-当前只稳定使用：
+三种正式命名模式仍统一保持：
 
 ```text
-State Information Gain
-Expected Utility
-Inductive Inference
+use_param_info_gain = False
 ```
 
-Parameter Information Gain 后续作为独立 AIMAPP 等价性审计项处理，完成准确复现后再决定是否加入实验消融。
+原因不是“尚未实现”，而是为了保持与 AIMAPP 正式模式的基线定义一致。
 
-不要为了“评价项更完整”而直接把它打开，否则会改变当前已冻结的探索与目标导航基线。
+Parameter Information Gain 后续如需实验，只作为显式消融变量开启，不要为了“评价项更完整”直接改动已经冻结的模式定义。
 
 ---
 
@@ -821,3 +827,395 @@ use_inductive_inference = True
 用途：SCA-AIFNav 扩展的目标-信息平衡模式。
 
 不要再通过散落的三个 bool 临时组合运行正式实验，统一通过命名模式配置，避免实验条件失控。
+
+---
+
+## 25. LiDAR 安装偏航必须从 TF 获取，不要维护手工 yaw offset
+
+### 问题
+
+LiDAR ray 的世界方向不仅取决于：
+
+```text
+robot yaw + ray angle
+```
+
+还取决于传感器相对机器人本体的安装方向。
+
+如果手工维护 `laser_yaw_offset`，模型、URDF/SDF 与参数一旦不同步，就会造成障碍方向整体旋转。
+
+### 固定处理
+
+正式 SCA 使用：
+
+```text
+LaserScan.header.frame_id
+-> tf2
+-> base_link <- sensor
+-> 提取 mounting yaw
+```
+
+再计算：
+
+```text
+world ray yaw
+=
+robot yaw
++ laser mounting yaw
++ ray angle
+```
+
+TF 暂不可用时忽略该帧 scan，不猜测安装角。
+
+对应 commit：
+
+```text
+7562dd6 feat: resolve laser yaw from tf
+```
+
+### 结论
+
+传感器外参属于 ROS TF 基础设施职责。
+
+正式主线不要重新引入手工 `laser_yaw_offset`。
+
+---
+
+## 26. posterior 认知坐标校正不能让 Nav2 的物理 odom 跟着跳
+
+### 问题
+
+SCA 内部认知坐标允许通过 posterior correction / realign 改变 alignment offset。
+
+但 Nav2 工作在机器人真实物理 `odom` frame 中。
+
+如果把经过认知校正后的 `/agent/odom` 直接当成 Nav2 odometry，或直接把认知目标当作 `odom` 目标，就会混淆两个坐标体系。
+
+### 固定关系
+
+认知位置定义为：
+
+```text
+cognitive
+=
+(raw odom - startup odom origin)
++ alignment offset
+```
+
+因此发送给 Nav2 前必须做逆变换：
+
+```text
+raw physical odom target
+=
+cognitive target
+- alignment offset
++ startup odom origin
+```
+
+正式实现由：
+
+```text
+OdometryAdapter.physical_position()
+```
+
+负责。
+
+### 结论
+
+必须严格区分：
+
+```text
+/agent/odom = SCA 认知坐标
+/odom       = ROS / Nav2 物理坐标
+```
+
+posterior correction 只修正认知表示，不能修改 Nav2 物理坐标基准。
+
+---
+
+## 27. 正式 SCA 主线是 odom-only Nav2，不要重新引入 AMCL / 静态地图 / initialpose
+
+### 最终架构
+
+```text
+SCA cognitive target
+-> physical odom target
+-> Nav2 NavigateToPose
+-> rolling costmap
+-> NavFn
+-> DWB
+-> velocity_smoother
+-> /cmd_vel
+```
+
+Nav2 参数固定使用：
+
+```text
+global_frame = odom
+robot_base_frame = base_link
+```
+
+local / global costmap 均使用 rolling window，并通过实时 LiDAR 更新障碍信息。
+
+### 不使用
+
+正式主线不依赖：
+
+```text
+AMCL
+map_server
+static map
+/initialpose
+```
+
+### 原因
+
+SCA 自己维护认知地图和高层状态表示。
+
+在当前研究架构中，Nav2 只负责“给定局部目标后如何安全到达”，不承担 SCA 的认知定位与高层地图角色。
+
+对应正式 commit：
+
+```text
+e8d4799 feat: make Nav2 the primary motion backend
+```
+
+---
+
+## 28. SDF 中存在 fixed joint，不代表 ROS TF 一定自动存在
+
+### 现象
+
+Gazebo 模型中已经定义：
+
+```text
+base_footprint -> base_link
+base_link -> base_scan
+```
+
+的固定几何关系，但 Nav2 启动后仍可能报告找不到：
+
+```text
+odom -> base_link
+```
+
+或 LiDAR frame 相关 TF。
+
+### 原因
+
+Gazebo SDF fixed joint 本身不保证当前 ROS launch 中自动发布对应 TF。
+
+### 固定处理
+
+当前仿真 launch 显式发布：
+
+```text
+base_footprint -> base_link
+z = 0.010
+
+base_link -> base_scan
+x = -0.064
+z = 0.121
+```
+
+而 diff drive 提供：
+
+```text
+odom -> base_footprint
+```
+
+最终链路：
+
+```text
+odom
+-> base_footprint
+-> base_link
+-> base_scan
+```
+
+### 结论
+
+遇到 Nav2 TF 报错时，不能只看 SDF 是否写了 joint。
+
+必须实际检查 ROS TF tree。
+
+---
+
+## 29. 默认 backend 改为 Nav2 后，旧 Potential Field 测试必须显式构造旧 backend
+
+### 现象
+
+将：
+
+```text
+navigation_motion_backend
+```
+
+默认值从：
+
+```text
+potential_field
+```
+
+改为：
+
+```text
+nav2
+```
+
+后，部分旧测试失败。
+
+### 根因
+
+这些测试依赖 Potential Field executor 的接口，但原来依靠默认配置隐式获得该后端。
+
+`NavigationNode()` 构造完成后，executor 对象已经按照当时 backend 创建。
+
+仅仅在测试中修改：
+
+```text
+node._navigation_motion_backend = "potential_field"
+```
+
+并不足以让已经创建的 `Nav2MotionExecutor` 变回 Potential Field executor。
+
+### 固定处理
+
+旧 Potential Field 专项测试必须同时显式设置：
+
+```text
+node._navigation_motion_backend = "potential_field"
+node._navigation_motion_executor = NavigationMotionExecutor()
+```
+
+### 结论
+
+测试应该声明自己真正验证的 backend。
+
+不要为了兼容旧测试而弱化 Nav2 正式接口，例如允许 directional Nav2 goal 缺少 physical target。
+
+---
+
+## 30. ament_flake8 并行检查可能 Segmentation fault
+
+### 现象
+
+ROS 全量 pytest 中，功能测试基本全部通过，但：
+
+```text
+test_flake8.py
+```
+
+内部出现多个：
+
+```text
+Fatal Python error: Segmentation fault
+flake8/checker.py
+multiprocessing/pool.py
+```
+
+即使重启电脑并关闭 Gazebo / Nav2 后仍可复现。
+
+### 根因
+
+崩溃发生在 `ament_flake8 -> flake8` 的并行 multiprocessing 路径，不是 SCA 或 Nav2 功能代码失败。
+
+### 错误尝试
+
+不能直接：
+
+```python
+main_with_errors(argv=["--jobs=1"])
+```
+
+因为 ROS Humble 的 `ament_flake8` argparse 不接受原生 Flake8 的 `--jobs` 参数。
+
+### 固定处理
+
+在：
+
+```text
+sca_aifnav_ros/setup.cfg
+```
+
+加入：
+
+```ini
+[flake8]
+jobs = 1
+max-line-length = 99
+```
+
+并让 `test_flake8.py` 通过 `--config` 显式加载该配置文件。
+
+### 验证
+
+最终：
+
+```text
+ROS pytest:
+356 passed, 1 skipped
+
+colcon test:
+909 tests
+0 errors
+0 failures
+2 skipped
+```
+
+### 结论
+
+如果未来再次出现相同堆栈，先检查 Flake8 是否重新进入并行模式，不要误判为 ROS、Nav2 或算法段错误。
+
+---
+
+## 31. Potential Field 的近目标安全预检查属于保留的工程偏差
+
+### 差异
+
+AIMAPP 原始 Potential Field 在目标距离极小时仍可能进入方向向量归一化路径。
+
+SCA 在计算前先检查是否已经足够接近目标。
+
+### 风险
+
+删除该预检查只为了追求逐行一致，可能重新引入零距离归一化 / 除零风险。
+
+### 固定结论
+
+保留 SCA 的近目标预检查。
+
+该差异属于明确的安全工程改进，不作为复现缺陷修正。
+
+同时正式主线已经采用 Nav2，因此 Potential Field 只保留为 legacy/reference backend。
+
+---
+
+## 32. SCA 与 Nav2 的职责边界必须保持清晰
+
+正式职责固定为：
+
+```text
+SCA:
+主动推断
+MCTS
+认知地图
+信息价值 / 目标偏好
+决定下一步“去哪里”
+
+Nav2:
+rolling costmap
+路径规划
+局部避障
+速度控制
+解决“怎么过去”
+
+机器人底盘:
+执行 /cmd_vel
+```
+
+### 结论
+
+后续不要把 Nav2 的局部运动能力误写成 SCA 的高层算法，也不要把 SCA 的认知地图职责下放给 AMCL + 静态地图。
+
+正式架构的研究重点仍然在 SCA 高层认知导航。

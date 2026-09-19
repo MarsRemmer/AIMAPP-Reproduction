@@ -16,6 +16,13 @@ TARGET_PAIRS="${TARGET_PAIRS:-5}"
 # Four hours is a conservative safety ceiling, not an experiment metric.
 RUN_TIMEOUT_SEC="${RUN_TIMEOUT_SEC:-14400}"
 
+# External liveness guard only.
+#
+# This does not define experimental success/failure performance.
+# It only aborts a run that has shown no meaningful execution
+# progress for an extended period.
+NO_PROGRESS_TIMEOUT_SEC="${NO_PROGRESS_TIMEOUT_SEC:-1800}"
+
 # AIMAPP stores a full model.pkl in every step directory.
 # Keep periodic checkpoints plus the latest model to prevent
 # long formal runs from consuming tens of GB.
@@ -224,9 +231,16 @@ preflight()
     echo "============================================================"
     echo "MINI WAREHOUSE FORMAL BATCH PREFLIGHT"
     echo "============================================================"
+
+    if ! [[ "$NO_PROGRESS_TIMEOUT_SEC" =~ ^[1-9][0-9]*$ ]]; then
+        echo "ERROR: NO_PROGRESS_TIMEOUT_SEC must be a positive integer."
+        exit 1
+    fi
+
     echo "Batch ID           : $BATCH_ID"
     echo "Target paired runs : $TARGET_PAIRS"
     echo "Run timeout        : $RUN_TIMEOUT_SEC s"
+    echo "No-progress timeout: $NO_PROGRESS_TIMEOUT_SEC s"
     echo "Model keep every   : $AIMAPP_MODEL_KEEP_EVERY steps"
     echo "Retention interval : $AIMAPP_MODEL_RETENTION_INTERVAL_SEC s"
     echo
@@ -768,8 +782,27 @@ run_one()
     local reason="unknown"
     local measurement_status="running"
 
+    local completed=0
+    local goals=0
+
+    local progress_value=0
+    local last_progress_value=0
+    local last_progress_time
+    local no_progress_elapsed=0
+
+    local watchdog_log="$CURRENT_RUN_DIR/logs/progress_watchdog.log"
+
     started="$(date +%s)"
+    last_progress_time="$started"
     next_report=60
+
+    cat > "$watchdog_log" <<TXT
+method=$method
+candidate=$candidate
+started_epoch=$started
+no_progress_timeout_sec=$NO_PROGRESS_TIMEOUT_SEC
+run_timeout_sec=$RUN_TIMEOUT_SEC
+TXT
 
     while true
     do
@@ -795,6 +828,8 @@ run_one()
                 || true
             )"
 
+            progress_value="$completed"
+
             if (( completed >= 200 )); then
                 success=1
                 reason="completed_200_actions"
@@ -813,6 +848,19 @@ run_one()
 
         else
 
+            completed="$(
+                grep -E \
+                    'EXPERIMENT_PROGRESS actions=[0-9]+' \
+                    "$CURRENT_RUN_DIR/logs/A5_agent.log" \
+                    2>/dev/null \
+                | tail -1 \
+                | sed -n \
+                    's/.*EXPERIMENT_PROGRESS actions=\([0-9][0-9]*\).*/\1/p'
+            )"
+
+            completed="${completed:-0}"
+            progress_value="$completed"
+
             if grep -q \
                 'EXPERIMENT_COMPLETE actions=200 limit=200' \
                 "$CURRENT_RUN_DIR/logs/A5_agent.log" \
@@ -830,6 +878,41 @@ run_one()
             fi
         fi
 
+        # ----------------------------------------------------
+        # External no-progress watchdog.
+        #
+        # AIMAPP:
+        #   progress_value = completed high-level actions
+        #
+        # SCA:
+        #   progress_value = completed high-level actions
+        #   reported by EXPERIMENT_PROGRESS
+        # ----------------------------------------------------
+
+        if (( progress_value > last_progress_value )); then
+            last_progress_value="$progress_value"
+            last_progress_time="$now"
+
+            echo \
+                "progress elapsed=${elapsed}s value=${progress_value}" \
+                >> "$watchdog_log"
+        fi
+
+        no_progress_elapsed=$((now - last_progress_time))
+
+        if (( no_progress_elapsed >= NO_PROGRESS_TIMEOUT_SEC )); then
+            success=0
+            reason="no_progress_timeout"
+
+            echo \
+                "TIMEOUT elapsed=${elapsed}s " \
+                "idle=${no_progress_elapsed}s " \
+                "last_progress=${last_progress_value}" \
+                >> "$watchdog_log"
+
+            break
+        fi
+
         if (( elapsed >= RUN_TIMEOUT_SEC )); then
             success=0
             reason="run_timeout"
@@ -840,19 +923,15 @@ run_one()
             if [[ "$method" == "aimapp_nav2" ]]; then
                 echo \
                     "[$method candidate $candidate] " \
-                    "elapsed=${elapsed}s completed=${completed}/200"
+                    "elapsed=${elapsed}s " \
+                    "completed=${completed}/200 " \
+                    "idle=${no_progress_elapsed}s"
             else
-                goals="$(
-                    grep -c \
-                        'Nav2 goal succeeded' \
-                        "$CURRENT_RUN_DIR/logs/A5_agent.log" \
-                        2>/dev/null \
-                    || true
-                )"
-
                 echo \
                     "[$method candidate $candidate] " \
-                    "elapsed=${elapsed}s nav2_successes=$goals"
+                    "elapsed=${elapsed}s " \
+                    "completed=${completed}/200 " \
+                    "idle=${no_progress_elapsed}s"
             fi
 
             next_report=$((next_report + 60))

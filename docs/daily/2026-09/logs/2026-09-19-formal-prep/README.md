@@ -125,3 +125,33 @@ SCA full regression
 -> inspect retention/watchdog/coverage/rosbag/video/disk
 -> 5 × 200 paired formal runs
 ```
+
+---
+
+## 状态补正：2026-09-19 后续提交状态
+
+本记录前文保留了开发过程中的“尚未提交”状态，用于反映当时的真实工作阶段。
+
+随后本日已完成以下正式提交并推送：
+
+```text
+SCA-AIFNav:
+a29db95 feat: expose completed experiment action progress
+
+AIMAPP-Reproduction:
+377b7be feat: add no-progress watchdog to formal runs
+```
+
+因此截至本次补正：
+
+```text
+AIMAPP model retention：已验证、已提交
+SCA EXPERIMENT_PROGRESS：已提交
+formal no-progress watchdog：已提交
+2026-09-19 工作记录：已归档
+```
+
+前文关于 retention、mtime、model_temp.pkl、STAY 与 Nav2 success、
+ROS setup/set -u 等易踩坑结论继续有效。
+
+下一阶段进入正式长跑前的最终检查及 200-action pilot。

@@ -16,6 +16,12 @@ TARGET_PAIRS="${TARGET_PAIRS:-5}"
 # Four hours is a conservative safety ceiling, not an experiment metric.
 RUN_TIMEOUT_SEC="${RUN_TIMEOUT_SEC:-14400}"
 
+# AIMAPP stores a full model.pkl in every step directory.
+# Keep periodic checkpoints plus the latest model to prevent
+# long formal runs from consuming tens of GB.
+AIMAPP_MODEL_KEEP_EVERY="${AIMAPP_MODEL_KEEP_EVERY:-50}"
+AIMAPP_MODEL_RETENTION_INTERVAL_SEC="${AIMAPP_MODEL_RETENTION_INTERVAL_SEC:-5}"
+
 COVERAGE_SEMANTICS="${COVERAGE_SEMANTICS:-ever_observed_lidar_cells}"
 COVERAGE_RESOLUTION_M="${COVERAGE_RESOLUTION_M:-0.05}"
 COVERAGE_MAP_SIZE_M="${COVERAGE_MAP_SIZE_M:-40.0}"
@@ -55,6 +61,7 @@ COV="$HARNESS/scripts/mini_warehouse/run_coverage_monitor.sh"
 COV_PY="$HARNESS/scripts/mini_warehouse/coverage_monitor.py"
 VIZ="$HARNESS/scripts/mini_warehouse/run_coverage_visualizer.sh"
 VIZ_PY="$HARNESS/scripts/mini_warehouse/coverage_visualizer.py"
+RETENTION="$HARNESS/scripts/mini_warehouse/aimapp_model_retention.py"
 A5_SCA="$SCA/scripts/mini_warehouse/baseline_A_5_sca.sh"
 
 BATCH_ID="${BATCH_ID:-$(date +%Y%m%d_%H%M%S)}"
@@ -67,6 +74,7 @@ A5_PID=""
 REC_PID=""
 COV_PID=""
 VIZ_PID=""
+RETENTION_PID=""
 
 CURRENT_METHOD=""
 CURRENT_RUN=""
@@ -144,6 +152,22 @@ stop_group()
 }
 
 
+stop_retention()
+{
+    if [[ -n "$RETENTION_PID" ]]; then
+        stop_group "$RETENTION_PID" 5
+        RETENTION_PID=""
+    fi
+
+    # One final deterministic prune after AIMAPP has stopped.
+    # This guarantees the final latest model is retained and
+    # stale intermediate snapshots are removed.
+    if [[         "$CURRENT_METHOD" == "aimapp_nav2"         && -n "$CURRENT_RUN_DIR"         && -d "$CURRENT_RUN_DIR/aimapp_native/tests"     ]]; then
+        python3 "$RETENTION"             "$CURRENT_RUN_DIR/aimapp_native/tests"             --keep-every "$AIMAPP_MODEL_KEEP_EVERY"             >> "$CURRENT_RUN_DIR/logs/aimapp_model_retention.log"             2>&1             || true
+    fi
+}
+
+
 cleanup_current_run()
 {
     set +e
@@ -162,6 +186,8 @@ cleanup_current_run()
 
     stop_group "$A5_PID" 8
     A5_PID=""
+
+    stop_retention
 
     stop_group "$A4_PID" 8
     A4_PID=""
@@ -201,6 +227,8 @@ preflight()
     echo "Batch ID           : $BATCH_ID"
     echo "Target paired runs : $TARGET_PAIRS"
     echo "Run timeout        : $RUN_TIMEOUT_SEC s"
+    echo "Model keep every   : $AIMAPP_MODEL_KEEP_EVERY steps"
+    echo "Retention interval : $AIMAPP_MODEL_RETENTION_INTERVAL_SEC s"
     echo
 
     for f in \
@@ -236,6 +264,25 @@ preflight()
         echo "ERROR: missing $VIZ_PY"
         exit 1
     fi
+
+    if [[ ! -f "$RETENTION" ]]; then
+        echo "ERROR: missing $RETENTION"
+        exit 1
+    fi
+
+    python3 - "$RETENTION" <<'PYCODE'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+compile(
+    path.read_text(encoding="utf-8"),
+    str(path),
+    "exec",
+)
+
+print("AIMAPP retention syntax: PASS")
+PYCODE
 
     if ! grep -q "coverage_exploration.mp4" "$VIZ_PY"; then
         echo "ERROR: coverage visualizer does not create an MP4."
@@ -465,6 +512,8 @@ run_one()
     CURRENT_RUN="${BATCH_ID}_candidate_$(printf '%02d' "$candidate")"
     CURRENT_RUN_DIR="$EXP/formal/$method/$CURRENT_RUN"
 
+    RETENTION_PID=""
+
     export START_X="$sx"
     export START_Y="$sy"
     export START_YAW="$yaw"
@@ -668,6 +717,25 @@ run_one()
 
         mkdir -p "$CURRENT_RUN_DIR/aimapp_native/tests"
 
+        setsid python3 "$RETENTION" \
+            "$CURRENT_RUN_DIR/aimapp_native/tests" \
+            --keep-every "$AIMAPP_MODEL_KEEP_EVERY" \
+            --watch \
+            --interval "$AIMAPP_MODEL_RETENTION_INTERVAL_SEC" \
+            > "$CURRENT_RUN_DIR/logs/aimapp_model_retention.log" \
+            2>&1 &
+
+        RETENTION_PID=$!
+
+        sleep 1
+
+        if ! kill -0 "$RETENTION_PID" 2>/dev/null; then
+            echo "ERROR: AIMAPP model retention failed to start."
+            cat "$CURRENT_RUN_DIR/logs/aimapp_model_retention.log" || true
+            cleanup_current_run
+            return 1
+        fi
+
         START_X="$sx" \
         START_Y="$sy" \
         START_YAW="$yaw" \
@@ -857,6 +925,8 @@ run_one()
 
     stop_group "$A5_PID" 8
     A5_PID=""
+
+    stop_retention
 
     stop_group "$A4_PID" 8
     A4_PID=""

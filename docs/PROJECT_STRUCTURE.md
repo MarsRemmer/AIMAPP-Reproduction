@@ -45,7 +45,7 @@ SCA-AIFNav-Project/
 - `aimapp/`：AIMAPP 基线算法及 Gazebo 仿真环境运行工作区。
 - `sca_aifnav/`：SCA-AIFNav 核心算法、ROS 2 节点及仿真集成工作区。
 - `experiments/`：统一负责实验启动、配置、记录、评价和批处理。
-- `results/`：只保存实验结果、rosbag、日志、轨迻、覆盖率数据和图像，不上传 Git。
+- `results/`：只保存实验结果、rosbag、日志、轨迹、覆盖率数据和图像，不上传 Git。
 - ROS 2 的 `build/`、`install/`、`log/` 均为本机生成目录。
 
 ## 3. Git 仓库
@@ -86,7 +86,8 @@ SCA-AIFNav-Project/
 - 本地：`experiments`
 - GitHub：`https://github.com/MarsRemmer/AIMAPP-Reproduction.git`
 - 分支：`main`
-- 当前基线：`dfa2370`
+- 正式实验代码基线：`dfa2370`
+- 工作站恢复工作流引入提交：`fdf68f6`
 
 ## 4. 项目管理原则
 

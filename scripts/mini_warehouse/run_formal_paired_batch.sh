@@ -413,20 +413,29 @@ wait_for_spawn()
 
 wait_for_robot()
 {
+    local topics=(
+        /odom
+        /scan
+        /camera_front/image_raw
+        /camera_left/image_raw
+        /camera_right/image_raw
+    )
+
     for _ in $(seq 1 60)
     do
-        local odom=0
-        local scan=0
+        local all_ready=1
 
-        ros2 topic list 2>/dev/null \
-            | grep -qx '/odom' \
-            && odom=1 || true
+        for topic in "${topics[@]}"
+        do
+            if ! timeout 6s ros2 topic echo "$topic" --once \
+                >/dev/null 2>&1
+            then
+                all_ready=0
+                break
+            fi
+        done
 
-        ros2 topic list 2>/dev/null \
-            | grep -qx '/scan' \
-            && scan=1 || true
-
-        if [[ "$odom" -eq 1 && "$scan" -eq 1 ]]; then
+        if [[ "$all_ready" -eq 1 ]]; then
             return 0
         fi
 
@@ -439,11 +448,37 @@ wait_for_robot()
 
 wait_for_nav2()
 {
+    local lifecycle_nodes=(
+        /map_server
+        /amcl
+        /planner_server
+        /controller_server
+        /bt_navigator
+    )
+
     for _ in $(seq 1 120)
     do
-        if ros2 action list 2>/dev/null \
+        local all_ready=1
+
+        if ! ros2 action list 2>/dev/null \
             | grep -qx '/navigate_to_pose'
         then
+            all_ready=0
+        fi
+
+        if [[ "$all_ready" -eq 1 ]]; then
+            for node in "${lifecycle_nodes[@]}"
+            do
+                if ! ros2 lifecycle get "$node" 2>/dev/null \
+                    | grep -q 'active'
+                then
+                    all_ready=0
+                    break
+                fi
+            done
+        fi
+
+        if [[ "$all_ready" -eq 1 ]]; then
             return 0
         fi
 

@@ -76,7 +76,7 @@ mkdir -p "$RUN_DIR"
 # and will still be recorded.
 # ----------------------------------------------------------------------
 
-TOPIC_REGEX='^/(clock|odom|agent/odom|scan|cmd_vel|cmd_vel_nav|tf|tf_static|initialpose|amcl_pose|map|plan|visitable_nodes|node_connections|sca_aifnav/.*|experiment/.*|navigate_to_pose/_action/(feedback|status))$'
+TOPIC_REGEX='^/(clock|odom|agent/odom|scan|cmd_vel|cmd_vel_nav|tf|tf_static|navigate_to_pose/_action/(feedback|status))$'
 
 echo "============================================================"
 echo "Mini Warehouse Common Recorder"

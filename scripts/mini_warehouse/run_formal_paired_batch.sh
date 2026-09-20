@@ -131,7 +131,7 @@ stop_group()
         return
     fi
 
-    if ! kill -0 "$pid" 2>/dev/null; then
+    if ! kill -0 -- "-$pid" 2>/dev/null; then
         wait "$pid" 2>/dev/null || true
         return
     fi
@@ -140,7 +140,7 @@ stop_group()
 
     for _ in $(seq 1 "$grace")
     do
-        if ! kill -0 "$pid" 2>/dev/null; then
+        if ! kill -0 -- "-$pid" 2>/dev/null; then
             wait "$pid" 2>/dev/null || true
             return
         fi
@@ -151,7 +151,7 @@ stop_group()
     kill -TERM -- "-$pid" 2>/dev/null || true
     sleep 2
 
-    if kill -0 "$pid" 2>/dev/null; then
+    if kill -0 -- "-$pid" 2>/dev/null; then
         kill -KILL -- "-$pid" 2>/dev/null || true
     fi
 

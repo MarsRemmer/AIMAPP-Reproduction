@@ -7,6 +7,14 @@
 export PYTHONDONTWRITEBYTECODE=1
 set -e
 
+AIMAPP_VENV="$HOME/SCA-AIFNav-Project/.venvs/aimapp"
+
+if [[ ! -f "$AIMAPP_VENV/bin/activate" ]]; then
+    echo "ERROR: AIMAPP virtual environment not found: $AIMAPP_VENV"
+    exit 1
+fi
+
+source "$AIMAPP_VENV/bin/activate"
 source /opt/ros/humble/setup.bash
 source "$HOME/SCA-AIFNav-Project/aimapp/runtime_ws/install/setup.bash"
 

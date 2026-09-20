@@ -31,7 +31,21 @@ echo "=========================================="
 
 cd "$WAREHOUSE_SHARE" || exit 1
 
-exec gzserver --verbose \
-    -s libgazebo_ros_init.so \
-    -s libgazebo_ros_factory.so \
+GZSERVER_CMD=(
+    gzserver
+    --verbose
+    -s libgazebo_ros_init.so
+    -s libgazebo_ros_factory.so
     "$WAREHOUSE_SHARE/worlds/warehouse_mini/warehouse_mini.world"
+)
+
+if [[ -n "${DISPLAY:-}" ]]; then
+    echo "Display       : $DISPLAY"
+    exec "${GZSERVER_CMD[@]}"
+else
+    echo "Display       : virtual X server (xvfb-run)"
+    exec xvfb-run -a \
+        -s "-screen 0 1920x1080x24 -nolisten tcp" \
+        env LIBGL_ALWAYS_SOFTWARE=1 \
+        "${GZSERVER_CMD[@]}"
+fi

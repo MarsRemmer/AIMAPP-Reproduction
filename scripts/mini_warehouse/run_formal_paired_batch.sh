@@ -10,7 +10,7 @@ EXP="$ROOT/results/mini_warehouse"
 
 POSES="$HARNESS/configs/mini_warehouse/start_poses.csv"
 
-TARGET_PAIRS="${TARGET_PAIRS:-5}"
+TARGET_PAIRS="${TARGET_PAIRS:-3}"
 
 # 200-action smoke timing suggests ~1–2 h/run is plausible.
 # Four hours is a conservative safety ceiling, not an experiment metric.
@@ -1092,20 +1092,26 @@ echo \
 "pair_index,candidate,x,y,yaw_rad,aimapp_status,sca_status,pair_status" \
 > "$MANIFEST"
 
-PAIRS=0
+RUNS=0
 
 while IFS=, read -r candidate sx sy yaw clearance finite drift
 do
     [[ "$candidate" == "candidate" ]] && continue
     [[ -z "$candidate" ]] && continue
 
-    if (( PAIRS >= TARGET_PAIRS )); then
+    # Fixed experimental design:
+    # run exactly the first TARGET_PAIRS prepared start poses.
+    # A failure is retained as an experimental result and is NOT
+    # replaced by another candidate.
+    if (( RUNS >= TARGET_PAIRS )); then
         break
     fi
 
+    RUNS=$((RUNS + 1))
+
     echo
     echo "############################################################"
-    echo "CANDIDATE $candidate"
+    echo "PAIR $RUNS/$TARGET_PAIRS - CANDIDATE $candidate"
     echo "############################################################"
 
     if run_one \
@@ -1136,20 +1142,20 @@ do
         "$AIM_STATUS" == "success" \
         && "$SCA_STATUS" == "success" \
     ]]; then
-        PAIRS=$((PAIRS + 1))
-        PAIR_STATUS="selected"
-
-        echo
-        echo "PAIRED SUCCESS $PAIRS/$TARGET_PAIRS"
+        PAIR_STATUS="both_success"
     else
-        PAIR_STATUS="rejected"
-
-        echo
-        echo "Candidate $candidate retained as documented failure."
+        PAIR_STATUS="completed_with_failure"
     fi
 
+    echo
+    echo "PAIR COMPLETE $RUNS/$TARGET_PAIRS"
+    echo "  candidate : $candidate"
+    echo "  AIMAPP    : $AIM_STATUS"
+    echo "  SCA-AIFNav: $SCA_STATUS"
+    echo "  pair      : $PAIR_STATUS"
+
     echo \
-"$PAIRS,$candidate,$sx,$sy,$yaw,$AIM_STATUS,$SCA_STATUS,$PAIR_STATUS" \
+"$RUNS,$candidate,$sx,$sy,$yaw,$AIM_STATUS,$SCA_STATUS,$PAIR_STATUS" \
         >> "$MANIFEST"
 
 done < "$POSES"
@@ -1163,13 +1169,13 @@ echo "============================================================"
 cat "$MANIFEST"
 
 echo
-echo "Paired successful starts: $PAIRS / $TARGET_PAIRS"
+echo "Fixed paired starts completed: $RUNS / $TARGET_PAIRS"
 echo "Batch evidence: $BATCH_DIR"
 
-if (( PAIRS < TARGET_PAIRS )); then
+if (( RUNS < TARGET_PAIRS )); then
     echo
     echo "ERROR:"
-    echo "Ten prepared starts were insufficient for five paired successes."
+    echo "Prepared start poses were insufficient for the requested fixed runs."
     exit 1
 fi
 

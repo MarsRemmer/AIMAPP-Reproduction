@@ -853,11 +853,11 @@ TXT
 
         if [[ "$method" == "aimapp_nav2" ]]; then
 
-            # Official AIMAPP logs this exactly once after each
-            # completed policy iteration.
+            # AIMAPP logs one step marker for each issued high-level action.
+            # Use this marker for both progress monitoring and the 200-action limit.
             completed="$(
                 grep -c \
-                    'HighLevelNav_model.*Next action' \
+                    'HighLevelNav_model.*step:' \
                     "$CURRENT_RUN_DIR/logs/A5_agent.log" \
                     2>/dev/null \
                 || true

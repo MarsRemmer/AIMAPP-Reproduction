@@ -448,13 +448,34 @@ wait_for_robot()
 
 wait_for_nav2()
 {
-    local lifecycle_nodes=(
-        /map_server
-        /amcl
-        /planner_server
-        /controller_server
-        /bt_navigator
-    )
+    local lifecycle_nodes=()
+
+    case "$CURRENT_METHOD" in
+        aimapp_nav2)
+            # AIMAPP uses map + AMCL localization.
+            lifecycle_nodes=(
+                /map_server
+                /amcl
+                /planner_server
+                /controller_server
+                /bt_navigator
+            )
+            ;;
+        sca_baseline_nav2)
+            # SCA-AIFNav uses odom-only navigation and therefore has
+            # no map_server or AMCL lifecycle nodes.
+            lifecycle_nodes=(
+                /planner_server
+                /controller_server
+                /bt_navigator
+                /velocity_smoother
+            )
+            ;;
+        *)
+            echo "ERROR: unsupported method for Nav2 readiness: $CURRENT_METHOD"
+            return 1
+            ;;
+    esac
 
     for _ in $(seq 1 120)
     do

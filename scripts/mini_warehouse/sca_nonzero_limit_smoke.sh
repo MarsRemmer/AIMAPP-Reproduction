@@ -35,7 +35,7 @@ echo "action limit   = $ACTION_LIMIT"
 
 A1_PID=""
 A3_PID=""
-A4_PID=""
+S4_PID=""
 A5_PID=""
 
 cleanup()
@@ -49,7 +49,7 @@ cleanup()
 
     for pid in \
         "$A5_PID" \
-        "$A4_PID" \
+        "$S4_PID" \
         "$A3_PID" \
         "$A1_PID"
     do
@@ -62,7 +62,7 @@ cleanup()
 
     for pid in \
         "$A5_PID" \
-        "$A4_PID" \
+        "$S4_PID" \
         "$A3_PID" \
         "$A1_PID"
     do
@@ -196,15 +196,15 @@ echo "A3 ready."
 
 echo
 echo "============================================================"
-echo "4. START A4 - NAV2"
+echo "4. START S4 - SCA ODOM-ONLY NAV2"
 echo "============================================================"
 
 setsid bash \
-    scripts/mini_warehouse/baseline_A_4_nav2.sh \
-    > "$SMOKE/logs/A4_nav2.log" \
+    scripts/mini_warehouse/baseline_S_4_nav2.sh \
+    > "$SMOKE/logs/S4_nav2.log" \
     2>&1 &
 
-A4_PID=$!
+S4_PID=$!
 
 READY=0
 
@@ -221,11 +221,11 @@ done
 
 if [[ "$READY" -ne 1 ]]; then
     echo "ERROR: NavigateToPose unavailable."
-    tail -120 "$SMOKE/logs/A4_nav2.log"
+    tail -120 "$SMOKE/logs/S4_nav2.log"
     exit 1
 fi
 
-echo "A4 ready."
+echo "S4 ready."
 
 
 echo
@@ -455,14 +455,23 @@ echo "8. VERIFY NAV2 WAS ACTUALLY USED"
 echo "============================================================"
 
 if grep -q \
-    'Sending Nav2 goal' \
+    'Nav2 goal accepted' \
     "$SMOKE/logs/A5_sca.log"
 then
-    echo "PASS: at least one translational Nav2 goal was sent."
+    echo "PASS: at least one translational Nav2 goal was accepted."
+
+    if grep -q \
+        'Nav2 goal succeeded' \
+        "$SMOKE/logs/A5_sca.log"
+    then
+        echo "PASS: at least one translational Nav2 goal succeeded."
+    else
+        echo "WARNING: Nav2 goal was accepted but no success was recorded."
+    fi
 else
     echo "WARNING:"
     echo "All first $ACTION_LIMIT actions may have been STAY."
-    echo "The action-limit test passed, but no Nav2 goal appeared."
+    echo "The action-limit test passed, but no Nav2 goal was accepted."
 fi
 
 
